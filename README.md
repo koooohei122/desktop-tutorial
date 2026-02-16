@@ -21,6 +21,8 @@
 PYTHONPATH=src python -m growing_agent run --iterations 3 --dry-run
 ```
 
+※ 環境によっては `python` が無いので、その場合は `python3` を使ってください。
+
 ### インストールして実行（任意）
 
 ローカルソースを編集可能インストールして実行する場合:

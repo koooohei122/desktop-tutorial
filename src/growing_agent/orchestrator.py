@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from growing_agent.evaluator import score_from_pytest
@@ -26,7 +28,9 @@ class Orchestrator:
 
     def __init__(self, *, store: StateStore | None = None, runner: AllowedCommandRunner | None = None) -> None:
         self.store = store or StateStore()
-        self.runner = runner or AllowedCommandRunner(allowed_commands=("pytest", "python"))
+        python_name = Path(sys.executable).name
+        self.runner = runner or AllowedCommandRunner(allowed_commands=(python_name, "pytest"))
+        self.python_executable = sys.executable
 
     def observe(self, state: dict[str, Any], iteration: int) -> dict[str, Any]:
         return {
@@ -36,8 +40,8 @@ class Orchestrator:
         }
 
     def plan(self, observation: dict[str, Any]) -> Plan:
-        # Minimal plan: run pytest quietly.
-        return Plan(commands=[["pytest", "-q"]])
+        # Minimal plan: run pytest quietly (via current interpreter).
+        return Plan(commands=[[self.python_executable, "-m", "pytest", "-q"]])
 
     def act(self, plan: Plan, *, dry_run: bool) -> list[RunResult]:
         results: list[RunResult] = []

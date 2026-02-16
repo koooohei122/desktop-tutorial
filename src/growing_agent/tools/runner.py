@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import shlex
 import subprocess
+import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -45,7 +46,8 @@ class AllowedCommandRunner:
         allowed_commands: Sequence[str] | None = None,
         log_path: Path | None = None,
     ) -> None:
-        self.allowed_commands = set(allowed_commands or ("pytest", "python"))
+        default_python = Path(sys.executable).name
+        self.allowed_commands = set(allowed_commands or ("pytest", default_python))
         self.log_path = log_path or (Path.cwd() / "logs" / "runner.log")
 
     def _ensure_allowed(self, argv: Sequence[str]) -> None:
@@ -53,11 +55,12 @@ class AllowedCommandRunner:
             raise CommandNotAllowedError("Empty command is not allowed")
 
         cmd0 = argv[0]
-        if cmd0 not in self.allowed_commands:
+        cmd_name = Path(cmd0).name
+        if cmd0 not in self.allowed_commands and cmd_name not in self.allowed_commands:
             raise CommandNotAllowedError(f"Command not allowlisted: {cmd0!r}")
 
         # Extra safety: if python is allowlisted, forbid using pip/ensurepip modules.
-        if cmd0 == "python":
+        if cmd_name.startswith("python"):
             for i, tok in enumerate(argv):
                 if tok == "-m" and i + 1 < len(argv) and argv[i + 1] in {"pip", "ensurepip"}:
                     raise CommandNotAllowedError("python -m pip/ensurepip is not allowed")

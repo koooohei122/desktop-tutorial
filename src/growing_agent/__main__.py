@@ -110,7 +110,18 @@ def main() -> int:
         state = orchestrator.run()
         language = orchestrator.config.language
         state["display_language"] = language
-        state["message"] = translate("run_completed", language)
+        history = state.get("history", [])
+        last_returncode = 0
+        if isinstance(history, list) and history:
+            last_item = history[-1]
+            if isinstance(last_item, dict):
+                raw_returncode = last_item.get("returncode", 0)
+                try:
+                    last_returncode = int(raw_returncode)
+                except (TypeError, ValueError):
+                    last_returncode = 1
+        message_key = "run_completed" if last_returncode == 0 else "run_completed_with_errors"
+        state["message"] = translate(message_key, language)
         if "stop_reason" in state:
             state["stop_message"] = translate(str(state["stop_reason"]), language)
         print(json.dumps(state, indent=2, ensure_ascii=False))

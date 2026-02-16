@@ -76,6 +76,8 @@ class GrowingAgentOrchestrator:
                 "allowed": result.allowed,
                 "timed_out": result.timed_out,
                 "duration_seconds": result.duration_seconds,
+                "stdout_excerpt": result.stdout.strip()[:500],
+                "stderr_excerpt": result.stderr.strip()[:500],
             }
         )
         if len(history) > self.config.max_history:

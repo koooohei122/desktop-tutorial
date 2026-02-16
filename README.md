@@ -85,3 +85,4 @@ After execution:
 
 - state is stored in `data/state.json`
 - command logs are appended to `data/runner.log`
+- each history entry keeps `stdout_excerpt` / `stderr_excerpt` for quick diagnostics

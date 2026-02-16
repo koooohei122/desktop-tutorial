@@ -244,6 +244,34 @@ class TestCli(unittest.TestCase):
             self.assertEqual(run_payload["display_language"], "en")
             self.assertEqual(run_payload["message"], "Agent run completed.")
 
+    def test_run_reports_errors_with_diagnostic_excerpt(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+
+            result = self.run_cli(
+                [
+                    "run",
+                    "--iterations",
+                    "1",
+                    "--language",
+                    "en",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                    "--command",
+                    sys.executable,
+                    "-c",
+                    "import sys; print('boom', file=sys.stderr); sys.exit(1)",
+                ]
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["message"], "Agent run finished with errors.")
+            self.assertEqual(payload["history"][0]["returncode"], 1)
+            self.assertIn("boom", payload["history"][0]["stderr_excerpt"])
+
 
 if __name__ == "__main__":
     unittest.main()

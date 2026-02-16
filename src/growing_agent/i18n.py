@@ -7,6 +7,7 @@ DEFAULT_LANGUAGE = "ja"
 MESSAGES: dict[str, dict[str, str]] = {
     "ja": {
         "run_completed": "エージェント実行が完了しました。",
+        "run_completed_with_errors": "エージェント実行は完了しましたが、エラーが発生しました。",
         "status_loaded": "現在の状態を読み込みました。",
         "state_reset": "状態を初期化しました。",
         "language_updated": "言語設定を更新しました。",
@@ -15,6 +16,7 @@ MESSAGES: dict[str, dict[str, str]] = {
     },
     "en": {
         "run_completed": "Agent run completed.",
+        "run_completed_with_errors": "Agent run finished with errors.",
         "status_loaded": "Loaded current state.",
         "state_reset": "State has been reset.",
         "language_updated": "Language preference updated.",

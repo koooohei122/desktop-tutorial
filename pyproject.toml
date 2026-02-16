@@ -5,9 +5,38 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "growing_agent"
 version = "0.1.0"
-description = "Minimal growing agent loop project"
+description = "General autonomous work agent with continuous local learning"
 readme = "README.md"
 requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+  {name = "growing_agent maintainers"}
+]
+keywords = ["agent", "autonomy", "automation", "cli", "learning"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Build Tools",
+  "Topic :: Utilities",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+growing-agent = "growing_agent.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/koooohei122/desktop-tutorial"
+Repository = "https://github.com/koooohei122/desktop-tutorial"
+Issues = "https://github.com/koooohei122/desktop-tutorial/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

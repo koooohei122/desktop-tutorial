@@ -1,0 +1,12 @@
+.git
+.github
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.venv
+dist
+build
+*.egg-info
+data/state.json
+data/runner.log

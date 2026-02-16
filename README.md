@@ -9,23 +9,21 @@ loop.
 It now also supports generalized autonomous work (not only coding loops) with
 continuous local learning from outcomes.
 
-## 15 improvements included
+## Core capabilities included
 
-1. Runtime settings centralized with `AgentConfig`.
-2. Atomic JSON state writes (`temp` -> `replace`).
-3. Corrupt state file backup and safe recovery.
-4. `reset_state()` support for quick restart.
-5. State normalization for core fields.
-6. Runner timeout handling.
-7. Safety blocklist for risky command tokens.
-8. Run duration captured in `RunResult`.
-9. Log rotation with size limit.
-10. Expanded pytest summary parsing (passed/failed/errors/skipped/xfailed/xpassed).
-11. Detailed evaluator output (`evaluate_pytest_result`).
-12. Early-stop by target score.
-13. Configurable history size limit.
-14. CLI subcommands: `run`, `status`, `reset`.
-15. Unit test suite for all key modules.
+- Runtime settings centralized with `AgentConfig`.
+- Atomic JSON state writes (`temp` -> `replace`).
+- Corrupt state file backup and safe recovery.
+- State normalization for core fields.
+- Runner timeout handling and safety blocklist for risky command tokens.
+- Run duration captured in `RunResult`.
+- Log rotation with size limit.
+- Expanded pytest summary parsing
+  (`passed/failed/errors/skipped/xfailed/xpassed`).
+- Detailed evaluator output (`evaluate_pytest_result`).
+- Early-stop by target score and configurable history size limit.
+- Multi-language CLI output (default: English).
+- Unit test suite for all key modules.
 
 ## General autonomous work (beyond coding)
 
@@ -41,6 +39,15 @@ Learning behavior:
 - appends failure-driven recommendations to `improvement_backlog`
 - reprioritizes queued tasks using learned reward history
 - auto-queues follow-up `analyze_state` tasks for failed executions
+
+## Launch-ready additions
+
+- MIT license (`LICENSE`)
+- Community docs (`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`)
+- GitHub CI workflow (`.github/workflows/ci.yml`)
+- GitHub release workflow (`.github/workflows/release.yml`)
+- Docker runtime (`Dockerfile`)
+- Launch checklist (`LAUNCH.md`)
 
 ## Project structure
 
@@ -62,6 +69,10 @@ Learning behavior:
    ```bash
    python3 -m pip install -e .
    ```
+   Or install with dev dependencies:
+   ```bash
+   python3 -m pip install -e ".[dev]"
+   ```
 3. Run loop with dry-run (requested command shape is supported):
    ```bash
    python3 -m growing_agent run --iterations 3 --dry-run
@@ -69,6 +80,10 @@ Learning behavior:
 4. Switch language (default `en`, supported: `en zh it fr pt hi ar ja es`):
    ```bash
    python3 -m growing_agent run --iterations 1 --dry-run --language en
+   ```
+5. Use console script entrypoint:
+   ```bash
+   growing-agent status
    ```
 
 ## CLI examples
@@ -107,6 +122,24 @@ python3 -m growing_agent autonomy-status
 # Reset state file
 python3 -m growing_agent reset
 ```
+
+## Docker quick start
+
+```bash
+docker build -t growing-agent:latest .
+docker run --rm growing-agent:latest status
+```
+
+## Public release quick start
+
+1. Ensure CI is green on main branch.
+2. Tag a release:
+   ```bash
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
+3. Release workflow builds artifacts and can publish to PyPI if
+   `PYPI_API_TOKEN` is configured in repository secrets.
 
 After execution:
 

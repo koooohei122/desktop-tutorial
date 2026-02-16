@@ -87,7 +87,7 @@ class AutonomousWorker:
             "created_at_utc": _utcnow(),
         }
         autonomy["queue"].append(task)
-        state["language"] = normalize_language(state.get("language", self.language))
+        state["language"] = normalize_language(self.language)
         self.memory.write_state(state)
         return task
 
@@ -97,7 +97,7 @@ class AutonomousWorker:
 
         state = self.memory.read_state()
         autonomy = self._ensure_autonomy_state(state)
-        state["language"] = normalize_language(state.get("language", self.language))
+        state["language"] = normalize_language(self.language)
 
         executed: list[dict[str, Any]] = []
         for _ in range(cycles):

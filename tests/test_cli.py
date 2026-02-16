@@ -216,7 +216,7 @@ class TestCli(unittest.TestCase):
                 [
                     "set-language",
                     "--language",
-                    "en",
+                    "EN",
                     "--state-path",
                     str(state_path),
                 ]

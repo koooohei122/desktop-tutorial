@@ -11,10 +11,19 @@ from .orchestrator import GrowingAgentOrchestrator
 from .tools.runner import CommandRunner
 
 
+def parse_language_arg(value: str) -> str:
+    normalized = value.strip().lower()
+    if normalized not in SUPPORTED_LANGUAGES:
+        raise argparse.ArgumentTypeError(
+            f"unsupported language '{value}'. choose from {', '.join(SUPPORTED_LANGUAGES)}"
+        )
+    return normalized
+
+
 def add_language_argument(parser: argparse.ArgumentParser, required: bool = False) -> None:
     parser.add_argument(
         "--language",
-        choices=SUPPORTED_LANGUAGES,
+        type=parse_language_arg,
         default=None if not required else argparse.SUPPRESS,
         required=required,
         help=f"Output/state language ({'/'.join(SUPPORTED_LANGUAGES)}).",

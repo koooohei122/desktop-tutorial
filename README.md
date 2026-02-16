@@ -74,6 +74,9 @@ python3 -m growing_agent status
 # Inspect state with UI message in Japanese
 python3 -m growing_agent status --language ja
 
+# Persist preferred language in state
+python3 -m growing_agent set-language --language en
+
 # Reset state file
 python3 -m growing_agent reset
 ```

@@ -191,6 +191,59 @@ class TestCli(unittest.TestCase):
                 "Stopped because target score was reached.",
             )
 
+    def test_set_language_persists_for_next_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+
+            first_run = self.run_cli(
+                [
+                    "run",
+                    "--iterations",
+                    "1",
+                    "--dry-run",
+                    "--language",
+                    "ja",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                ]
+            )
+            self.assertEqual(first_run.returncode, 0, msg=first_run.stderr)
+
+            set_language = self.run_cli(
+                [
+                    "set-language",
+                    "--language",
+                    "en",
+                    "--state-path",
+                    str(state_path),
+                ]
+            )
+            self.assertEqual(set_language.returncode, 0, msg=set_language.stderr)
+            set_payload = json.loads(set_language.stdout)
+            self.assertEqual(set_payload["language"], "en")
+            self.assertEqual(set_payload["message"], "Language preference updated.")
+
+            second_run = self.run_cli(
+                [
+                    "run",
+                    "--iterations",
+                    "1",
+                    "--dry-run",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                ]
+            )
+            self.assertEqual(second_run.returncode, 0, msg=second_run.stderr)
+            run_payload = json.loads(second_run.stdout)
+            self.assertEqual(run_payload["language"], "en")
+            self.assertEqual(run_payload["display_language"], "en")
+            self.assertEqual(run_payload["message"], "Agent run completed.")
+
 
 if __name__ == "__main__":
     unittest.main()

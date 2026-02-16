@@ -11,11 +11,12 @@ from .orchestrator import GrowingAgentOrchestrator
 from .tools.runner import CommandRunner
 
 
-def add_language_argument(parser: argparse.ArgumentParser) -> None:
+def add_language_argument(parser: argparse.ArgumentParser, required: bool = False) -> None:
     parser.add_argument(
         "--language",
         choices=SUPPORTED_LANGUAGES,
-        default=None,
+        default=None if not required else argparse.SUPPRESS,
+        required=required,
         help=f"Output/state language ({'/'.join(SUPPORTED_LANGUAGES)}).",
     )
 
@@ -52,6 +53,13 @@ def build_parser() -> argparse.ArgumentParser:
     reset_parser = subparsers.add_parser("reset", help="Reset saved state.")
     reset_parser.add_argument("--state-path", default="data/state.json")
     add_language_argument(reset_parser)
+
+    set_language_parser = subparsers.add_parser(
+        "set-language",
+        help="Persist preferred language in state.",
+    )
+    set_language_parser.add_argument("--state-path", default="data/state.json")
+    add_language_argument(set_language_parser, required=True)
     return parser
 
 
@@ -119,6 +127,19 @@ def main() -> int:
         memory.write_state(state)
         state["display_language"] = language
         state["message"] = translate("state_reset", language)
+        print(json.dumps(state, indent=2, ensure_ascii=False))
+        return 0
+
+    if args.subcommand == "set-language":
+        memory = MemoryStore(args.state_path)
+        state = memory.read_state()
+        language = str(args.language)
+        state["language"] = language
+        if "stop_reason" in state:
+            state["stop_message"] = translate(str(state["stop_reason"]), language)
+        memory.write_state(state)
+        state["display_language"] = language
+        state["message"] = translate("language_updated", language)
         print(json.dumps(state, indent=2, ensure_ascii=False))
         return 0
 

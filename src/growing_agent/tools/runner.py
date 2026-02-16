@@ -46,8 +46,13 @@ class CommandRunner:
         log_path: str | Path = "data/runner.log",
         max_log_bytes: int = 1_000_000,
     ) -> None:
-        self.allowed_commands = allowed_commands or {"pytest"}
+        if allowed_commands is None:
+            self.allowed_commands = {"pytest"}
+        else:
+            self.allowed_commands = {str(item) for item in allowed_commands}
         self.log_path = Path(log_path)
+        if max_log_bytes < 1:
+            raise ValueError("max_log_bytes must be >= 1")
         self.max_log_bytes = max_log_bytes
 
     def run(

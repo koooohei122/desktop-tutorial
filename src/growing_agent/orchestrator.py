@@ -20,7 +20,8 @@ class GrowingAgentOrchestrator:
     ) -> None:
         self.config = config or AgentConfig()
         self.memory = memory or MemoryStore()
-        allowed = {Path(self.config.command[0]).name}
+        command_token = self.config.command[0]
+        allowed = {command_token, Path(command_token).name}
         self.runner = runner or CommandRunner(allowed_commands=allowed)
 
     def observe(self) -> dict[str, Any]:

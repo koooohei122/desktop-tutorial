@@ -91,6 +91,25 @@ class TestCommandRunner(unittest.TestCase):
             self.assertFalse(result.allowed)
             self.assertEqual(result.returncode, 126)
 
+    def test_empty_allowlist_rejects_pytest_too(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            runner = CommandRunner(
+                allowed_commands=set(),
+                log_path=Path(tmpdir) / "run.log",
+            )
+            result = runner.run(["pytest", "-q"], dry_run=True)
+            self.assertFalse(result.allowed)
+            self.assertEqual(result.returncode, 126)
+
+    def test_invalid_log_size_raises(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with self.assertRaises(ValueError):
+                CommandRunner(
+                    allowed_commands={"pytest"},
+                    log_path=Path(tmpdir) / "run.log",
+                    max_log_bytes=0,
+                )
+
     def test_log_rotation(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             log_path = Path(tmpdir) / "run.log"

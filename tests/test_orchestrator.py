@@ -12,6 +12,21 @@ from growing_agent.tools.runner import CommandRunner
 
 
 class TestOrchestrator(unittest.TestCase):
+    def test_default_runner_allowlist_contains_configured_command_token(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            config = AgentConfig(
+                iterations=1,
+                dry_run=True,
+                command=[sys.executable, "-c", "print('ok')"],
+            )
+            orch = GrowingAgentOrchestrator(
+                memory=MemoryStore(state_path),
+                runner=None,
+                config=config,
+            )
+            self.assertIn(sys.executable, orch.runner.allowed_commands)
+
     def test_history_is_trimmed(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = Path(tmpdir) / "state.json"

@@ -51,8 +51,12 @@ def build_orchestrator_from_args(args: argparse.Namespace) -> GrowingAgentOrches
         halt_on_error=args.halt_on_error,
     )
     memory = MemoryStore(args.state_path)
-    executable = Path(config.command[0]).name
-    runner = CommandRunner(allowed_commands={executable}, log_path=args.log_path)
+    command_token = config.command[0]
+    executable = Path(command_token).name
+    runner = CommandRunner(
+        allowed_commands={command_token, executable},
+        log_path=args.log_path,
+    )
     return GrowingAgentOrchestrator(memory=memory, runner=runner, config=config)
 
 

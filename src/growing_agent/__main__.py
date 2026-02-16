@@ -96,7 +96,7 @@ def main() -> int:
         state["message"] = translate("run_completed", language)
         if "stop_reason" in state and "stop_message" not in state:
             state["stop_message"] = translate(str(state["stop_reason"]), language)
-        print(json.dumps(state, indent=2, ensure_ascii=True))
+        print(json.dumps(state, indent=2, ensure_ascii=False))
         return 0
 
     if args.subcommand == "status":
@@ -107,7 +107,7 @@ def main() -> int:
         state["message"] = translate("status_loaded", language)
         if "stop_reason" in state and "stop_message" not in state:
             state["stop_message"] = translate(str(state["stop_reason"]), language)
-        print(json.dumps(state, indent=2, ensure_ascii=True))
+        print(json.dumps(state, indent=2, ensure_ascii=False))
         return 0
 
     if args.subcommand == "reset":
@@ -119,7 +119,7 @@ def main() -> int:
         memory.write_state(state)
         state["display_language"] = language
         state["message"] = translate("state_reset", language)
-        print(json.dumps(state, indent=2, ensure_ascii=True))
+        print(json.dumps(state, indent=2, ensure_ascii=False))
         return 0
 
     parser.error("Unknown subcommand")

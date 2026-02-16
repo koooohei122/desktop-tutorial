@@ -91,7 +91,23 @@ class GrowingAgentOrchestrator:
         average_score = round(sum(scores) / len(scores), 3) if scores else 0.0
         best_score = round(max(scores), 3) if scores else 0.0
 
+        preserved = {
+            key: value
+            for key, value in observation.items()
+            if key
+            not in {
+                "iteration",
+                "last_score",
+                "history",
+                "language",
+                "metrics",
+                "stop_reason",
+                "stop_message",
+            }
+        }
+
         new_state: dict[str, Any] = {
+            **preserved,
             "iteration": plan["iteration"],
             "last_score": score,
             "history": history,
@@ -112,6 +128,8 @@ class GrowingAgentOrchestrator:
         runtime_dry_run = self.config.dry_run if dry_run is None else dry_run
 
         state = self.observe()
+        state.pop("stop_reason", None)
+        state.pop("stop_message", None)
         for _ in range(loop_iterations):
             observation = state
             plan = self.plan(observation)

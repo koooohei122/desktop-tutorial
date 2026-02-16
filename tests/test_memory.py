@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from growing_agent.memory import MemoryStore, build_default_state
+from growing_agent.memory import MemoryStore, build_default_autonomy_state, build_default_state
 
 
 class TestMemoryStore(unittest.TestCase):
@@ -24,6 +24,7 @@ class TestMemoryStore(unittest.TestCase):
                 "last_score": 0.75,
                 "history": [{"iteration": 4, "score": 0.75}],
                 "language": "ja",
+                "autonomy": build_default_autonomy_state(),
             }
             store.write_state(expected)
             self.assertEqual(store.read_state(), expected)

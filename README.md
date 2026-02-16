@@ -6,6 +6,9 @@
 
 loop.
 
+It now also supports generalized autonomous work (not only coding loops) with
+continuous local learning from outcomes.
+
 ## 15 improvements included
 
 1. Runtime settings centralized with `AgentConfig`.
@@ -23,6 +26,21 @@ loop.
 13. Configurable history size limit.
 14. CLI subcommands: `run`, `status`, `reset`.
 15. Unit test suite for all key modules.
+
+## General autonomous work (beyond coding)
+
+Autonomy tasks currently supported:
+
+- `command`: run an allowlisted command as a task
+- `write_note`: append notes under `data/`
+- `analyze_state`: generate local insights from current state
+
+Learning behavior:
+
+- keeps per-task-type stats (`attempts`, `successes`, `avg_reward`)
+- appends failure-driven recommendations to `improvement_backlog`
+- reprioritizes queued tasks using learned reward history
+- auto-queues follow-up `analyze_state` tasks for failed executions
 
 ## Project structure
 
@@ -77,6 +95,15 @@ python3 -m growing_agent status --language ja
 # Persist preferred language in state
 python3 -m growing_agent set-language --language en
 
+# Queue a generic autonomous task
+python3 -m growing_agent enqueue-task --task-type write_note --title "daily memo" --payload-json '{"path":"data/autonomy/notes.md","text":"hello"}'
+
+# Run autonomy queue with learning updates
+python3 -m growing_agent run-autonomy --cycles 3 --dry-run
+
+# Inspect autonomy queue/learning state
+python3 -m growing_agent autonomy-status
+
 # Reset state file
 python3 -m growing_agent reset
 ```
@@ -86,3 +113,4 @@ After execution:
 - state is stored in `data/state.json`
 - command logs are appended to `data/runner.log`
 - each history entry keeps `stdout_excerpt` / `stderr_excerpt` for quick diagnostics
+- autonomy queue/results/learning are persisted in `state["autonomy"]`

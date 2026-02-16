@@ -272,6 +272,69 @@ class TestCli(unittest.TestCase):
             self.assertEqual(payload["history"][0]["returncode"], 1)
             self.assertIn("boom", payload["history"][0]["stderr_excerpt"])
 
+    def test_autonomy_enqueue_run_status_flow(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+
+            enqueue = self.run_cli(
+                [
+                    "enqueue-task",
+                    "--task-type",
+                    "write_note",
+                    "--title",
+                    "record note",
+                    "--priority",
+                    "8",
+                    "--payload-json",
+                    '{"path":"data/autonomy/notes.md","text":"hello"}',
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                    "--language",
+                    "en",
+                ]
+            )
+            self.assertEqual(enqueue.returncode, 0, msg=enqueue.stderr)
+            enqueue_payload = json.loads(enqueue.stdout)
+            self.assertEqual(enqueue_payload["message"], "Autonomy task has been queued.")
+            self.assertEqual(enqueue_payload["task"]["task_type"], "write_note")
+
+            run = self.run_cli(
+                [
+                    "run-autonomy",
+                    "--cycles",
+                    "1",
+                    "--dry-run",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                    "--language",
+                    "en",
+                ]
+            )
+            self.assertEqual(run.returncode, 0, msg=run.stderr)
+            run_payload = json.loads(run.stdout)
+            self.assertEqual(run_payload["message"], "Autonomous work cycle completed.")
+            self.assertEqual(run_payload["summary"]["executed_count"], 1)
+            self.assertEqual(run_payload["executed"][0]["task_type"], "write_note")
+
+            status = self.run_cli(
+                [
+                    "autonomy-status",
+                    "--state-path",
+                    str(state_path),
+                    "--language",
+                    "en",
+                ]
+            )
+            self.assertEqual(status.returncode, 0, msg=status.stderr)
+            status_payload = json.loads(status.stdout)
+            self.assertEqual(status_payload["message"], "Loaded autonomous work status.")
+            self.assertIn("learning", status_payload["autonomy"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -9,11 +9,24 @@ from typing import Any
 
 from .i18n import DEFAULT_LANGUAGE, normalize_language
 
+
+def build_default_autonomy_state() -> dict[str, Any]:
+    return {
+        "queue": [],
+        "completed": [],
+        "learning": {
+            "task_type_stats": {},
+            "improvement_backlog": [],
+        },
+    }
+
+
 DEFAULT_STATE: dict[str, Any] = {
     "iteration": 0,
     "last_score": None,
     "history": [],
     "language": DEFAULT_LANGUAGE,
+    "autonomy": build_default_autonomy_state(),
 }
 
 
@@ -23,6 +36,7 @@ def build_default_state() -> dict[str, Any]:
         "last_score": None,
         "history": [],
         "language": DEFAULT_LANGUAGE,
+        "autonomy": build_default_autonomy_state(),
     }
 
 
@@ -104,6 +118,7 @@ class MemoryStore:
             last_score = None
 
         language = normalize_language(data.get("language", default["language"]))
+        autonomy = self._normalize_autonomy(data.get("autonomy", default["autonomy"]))
 
         normalized = {
             **extras,
@@ -111,5 +126,77 @@ class MemoryStore:
             "last_score": last_score,
             "history": history,
             "language": language,
+            "autonomy": autonomy,
+        }
+        return normalized
+
+    def _normalize_autonomy(self, autonomy: Any) -> dict[str, Any]:
+        default = build_default_autonomy_state()
+        if not isinstance(autonomy, dict):
+            return default
+
+        extras = {k: v for k, v in autonomy.items() if k not in default}
+
+        queue = autonomy.get("queue", default["queue"])
+        if not isinstance(queue, list):
+            queue = []
+        else:
+            queue = [item for item in queue if isinstance(item, dict)]
+
+        completed = autonomy.get("completed", default["completed"])
+        if not isinstance(completed, list):
+            completed = []
+        else:
+            completed = [item for item in completed if isinstance(item, dict)]
+
+        learning_raw = autonomy.get("learning", default["learning"])
+        if not isinstance(learning_raw, dict):
+            learning_raw = {}
+
+        stats_raw = learning_raw.get("task_type_stats", {})
+        if not isinstance(stats_raw, dict):
+            stats_raw = {}
+        task_type_stats: dict[str, dict[str, Any]] = {}
+        for task_type, stat in stats_raw.items():
+            if not isinstance(task_type, str) or not isinstance(stat, dict):
+                continue
+            attempts_raw = stat.get("attempts", 0)
+            successes_raw = stat.get("successes", 0)
+            avg_reward_raw = stat.get("avg_reward", 0.0)
+            try:
+                attempts = max(0, int(attempts_raw))
+            except (TypeError, ValueError):
+                attempts = 0
+            try:
+                successes = max(0, int(successes_raw))
+            except (TypeError, ValueError):
+                successes = 0
+            try:
+                avg_reward = float(avg_reward_raw)
+            except (TypeError, ValueError):
+                avg_reward = 0.0
+            task_type_stats[task_type] = {
+                **stat,
+                "attempts": attempts,
+                "successes": successes,
+                "avg_reward": round(avg_reward, 3),
+            }
+
+        backlog_raw = learning_raw.get("improvement_backlog", [])
+        if not isinstance(backlog_raw, list):
+            backlog_raw = []
+        improvement_backlog = [item for item in backlog_raw if isinstance(item, dict)]
+
+        learning = {
+            **learning_raw,
+            "task_type_stats": task_type_stats,
+            "improvement_backlog": improvement_backlog,
+        }
+
+        normalized = {
+            **extras,
+            "queue": queue,
+            "completed": completed,
+            "learning": learning,
         }
         return normalized

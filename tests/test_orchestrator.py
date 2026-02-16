@@ -47,6 +47,54 @@ class TestOrchestrator(unittest.TestCase):
             self.assertEqual(len(state["history"]), 2)
             self.assertEqual(state["metrics"]["iterations_recorded"], 2)
 
+    def test_run_preserves_autonomy_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+
+            memory = MemoryStore(state_path)
+            seed = memory.read_state()
+            autonomy = seed.get("autonomy", {})
+            if not isinstance(autonomy, dict):
+                autonomy = {}
+            queue = autonomy.get("queue", [])
+            if not isinstance(queue, list):
+                queue = []
+            queue.append(
+                {
+                    "task_id": "abc123",
+                    "task_type": "write_note",
+                    "title": "keep-me",
+                    "payload": {"path": "data/autonomy/notes.md", "text": "x"},
+                    "priority": 5,
+                    "attempts": 0,
+                    "created_at_utc": "2026-01-01T00:00:00+00:00",
+                }
+            )
+            autonomy["queue"] = queue
+            seed["autonomy"] = autonomy
+            memory.write_state(seed)
+
+            config = AgentConfig(
+                iterations=1,
+                dry_run=True,
+                command=["pytest", "-q"],
+            )
+            orch = GrowingAgentOrchestrator(
+                memory=memory,
+                runner=CommandRunner(allowed_commands={"pytest"}, log_path=log_path),
+                config=config,
+            )
+            orch.run()
+
+            persisted = memory.read_state()
+            persisted_autonomy = persisted.get("autonomy", {})
+            self.assertIsInstance(persisted_autonomy, dict)
+            persisted_queue = persisted_autonomy.get("queue", [])
+            self.assertIsInstance(persisted_queue, list)
+            self.assertEqual(len(persisted_queue), 1)
+            self.assertEqual(persisted_queue[0]["task_id"], "abc123")
+
     def test_stop_on_target(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = Path(tmpdir) / "state.json"

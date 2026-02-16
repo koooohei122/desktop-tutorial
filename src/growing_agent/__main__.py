@@ -3,7 +3,13 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any
 
+from .autonomy import (
+    DEFAULT_AUTONOMY_ALLOWED_COMMANDS,
+    SUPPORTED_AUTONOMY_TASKS,
+    AutonomousWorker,
+)
 from .config import AgentConfig
 from .i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, translate
 from .memory import MemoryStore
@@ -28,6 +34,16 @@ def add_language_argument(parser: argparse.ArgumentParser, required: bool = Fals
         required=required,
         help=f"Output/state language ({'/'.join(SUPPORTED_LANGUAGES)}).",
     )
+
+
+def parse_payload_json(value: str) -> dict[str, Any]:
+    try:
+        payload = json.loads(value)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"payload-json must be valid JSON: {error.msg}") from error
+    if not isinstance(payload, dict):
+        raise ValueError("payload-json must be a JSON object")
+    return payload
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -69,6 +85,51 @@ def build_parser() -> argparse.ArgumentParser:
     )
     set_language_parser.add_argument("--state-path", default="data/state.json")
     add_language_argument(set_language_parser, required=True)
+
+    enqueue_task_parser = subparsers.add_parser(
+        "enqueue-task",
+        help="Queue an autonomous task.",
+    )
+    enqueue_task_parser.add_argument("--state-path", default="data/state.json")
+    enqueue_task_parser.add_argument("--log-path", default="data/runner.log")
+    enqueue_task_parser.add_argument(
+        "--task-type",
+        choices=SUPPORTED_AUTONOMY_TASKS,
+        required=True,
+    )
+    enqueue_task_parser.add_argument("--title", required=True)
+    enqueue_task_parser.add_argument("--priority", type=int, default=5)
+    enqueue_task_parser.add_argument("--payload-json", default="{}")
+    enqueue_task_parser.add_argument(
+        "--allow-command",
+        action="append",
+        default=None,
+        help="Extra allowlisted command for command tasks.",
+    )
+    add_language_argument(enqueue_task_parser)
+
+    run_autonomy_parser = subparsers.add_parser(
+        "run-autonomy",
+        help="Run queued autonomous tasks with learning updates.",
+    )
+    run_autonomy_parser.add_argument("--state-path", default="data/state.json")
+    run_autonomy_parser.add_argument("--log-path", default="data/runner.log")
+    run_autonomy_parser.add_argument("--cycles", type=int, default=3)
+    run_autonomy_parser.add_argument("--dry-run", action="store_true")
+    run_autonomy_parser.add_argument(
+        "--allow-command",
+        action="append",
+        default=None,
+        help="Extra allowlisted command for command tasks.",
+    )
+    add_language_argument(run_autonomy_parser)
+
+    autonomy_status_parser = subparsers.add_parser(
+        "autonomy-status",
+        help="Show autonomous queue/learning status.",
+    )
+    autonomy_status_parser.add_argument("--state-path", default="data/state.json")
+    add_language_argument(autonomy_status_parser)
     return parser
 
 
@@ -99,6 +160,23 @@ def build_orchestrator_from_args(args: argparse.Namespace) -> GrowingAgentOrches
         log_path=args.log_path,
     )
     return GrowingAgentOrchestrator(memory=memory, runner=runner, config=config)
+
+
+def build_autonomous_worker_from_args(args: argparse.Namespace) -> AutonomousWorker:
+    memory = MemoryStore(args.state_path)
+    previous = memory.read_state()
+    language = args.language or str(previous.get("language", DEFAULT_LANGUAGE))
+
+    allow_commands = set(DEFAULT_AUTONOMY_ALLOWED_COMMANDS)
+    raw_allow = getattr(args, "allow_command", None)
+    if isinstance(raw_allow, list):
+        allow_commands.update(str(item) for item in raw_allow if str(item).strip())
+
+    runner = CommandRunner(
+        allowed_commands=allow_commands,
+        log_path=getattr(args, "log_path", "data/runner.log"),
+    )
+    return AutonomousWorker(memory=memory, runner=runner, language=language)
 
 
 def main() -> int:
@@ -161,6 +239,57 @@ def main() -> int:
         state["display_language"] = language
         state["message"] = translate("language_updated", language)
         print(json.dumps(state, indent=2, ensure_ascii=False))
+        return 0
+
+    if args.subcommand == "enqueue-task":
+        worker = build_autonomous_worker_from_args(args)
+        try:
+            payload = parse_payload_json(args.payload_json)
+            task = worker.enqueue(
+                task_type=args.task_type,
+                title=args.title,
+                payload=payload,
+                priority=args.priority,
+            )
+        except ValueError as error:
+            parser.error(str(error))
+        language = worker.language
+        response = {
+            "task": task,
+            "display_language": language,
+            "message": translate("task_enqueued", language),
+        }
+        print(json.dumps(response, indent=2, ensure_ascii=False))
+        return 0
+
+    if args.subcommand == "run-autonomy":
+        worker = build_autonomous_worker_from_args(args)
+        try:
+            result = worker.run(cycles=args.cycles, dry_run=args.dry_run)
+        except ValueError as error:
+            parser.error(str(error))
+        state = result["state"]
+        language = str(state.get("language", worker.language))
+        response = {
+            "summary": result["summary"],
+            "executed": result["executed"],
+            "autonomy": state.get("autonomy", {}),
+            "display_language": language,
+            "message": translate("autonomy_run_completed", language),
+        }
+        print(json.dumps(response, indent=2, ensure_ascii=False))
+        return 0
+
+    if args.subcommand == "autonomy-status":
+        memory = MemoryStore(args.state_path)
+        state = memory.read_state()
+        language = args.language or str(state.get("language", DEFAULT_LANGUAGE))
+        response = {
+            "autonomy": state.get("autonomy", {}),
+            "display_language": language,
+            "message": translate("autonomy_status_loaded", language),
+        }
+        print(json.dumps(response, indent=2, ensure_ascii=False))
         return 0
 
     parser.error("Unknown subcommand")

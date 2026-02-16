@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .i18n import SUPPORTED_LANGUAGES
+from .i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
 
 
 @dataclass
@@ -17,7 +17,7 @@ class AgentConfig:
     max_history: int = 200
     timeout_seconds: float = 30.0
     halt_on_error: bool = False
-    language: str = "ja"
+    language: str = DEFAULT_LANGUAGE
 
     def __post_init__(self) -> None:
         if self.iterations < 1:

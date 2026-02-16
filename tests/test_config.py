@@ -6,9 +6,14 @@ from growing_agent.config import AgentConfig
 
 
 class TestAgentConfig(unittest.TestCase):
-    def test_default_language_is_japanese(self) -> None:
+    def test_default_language_is_english(self) -> None:
         config = AgentConfig()
-        self.assertEqual(config.language, "ja")
+        self.assertEqual(config.language, "en")
+
+    def test_supported_languages_are_accepted(self) -> None:
+        for language in ("en", "zh", "it", "fr", "pt", "hi", "ar", "ja", "es"):
+            config = AgentConfig(language=language)
+            self.assertEqual(config.language, language)
 
     def test_invalid_language_raises(self) -> None:
         with self.assertRaises(ValueError):

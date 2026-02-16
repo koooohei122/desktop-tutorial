@@ -335,6 +335,28 @@ class TestCli(unittest.TestCase):
             self.assertEqual(status_payload["message"], "Loaded autonomous work status.")
             self.assertIn("learning", status_payload["autonomy"])
 
+    def test_additional_languages_are_supported(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+
+            set_language = self.run_cli(
+                [
+                    "set-language",
+                    "--language",
+                    "HI",
+                    "--state-path",
+                    str(state_path),
+                ]
+            )
+            self.assertEqual(set_language.returncode, 0, msg=set_language.stderr)
+            payload = json.loads(set_language.stdout)
+            self.assertEqual(payload["language"], "hi")
+
+            status = self.run_cli(["status", "--state-path", str(state_path)])
+            self.assertEqual(status.returncode, 0, msg=status.stderr)
+            status_payload = json.loads(status.stdout)
+            self.assertEqual(status_payload["language"], "hi")
+
 
 if __name__ == "__main__":
     unittest.main()

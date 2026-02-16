@@ -66,7 +66,7 @@ Learning behavior:
    ```bash
    python3 -m growing_agent run --iterations 3 --dry-run
    ```
-4. Switch language (Japanese/English):
+4. Switch language (default `en`, supported: `en zh it fr pt hi ar ja es`):
    ```bash
    python3 -m growing_agent run --iterations 1 --dry-run --language en
    ```

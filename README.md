@@ -1,39 +1,69 @@
 # growing_agent
 
-`growing_agent` is a minimal Python project with an iterative:
+`growing_agent` is a lightweight Python project with an iterative:
 
 `observe -> plan -> act -> evaluate -> update`
 
 loop.
 
-## What is included
+## 15 improvements included
 
-- `src/growing_agent/orchestrator.py`: main loop orchestration
-- `src/growing_agent/memory.py`: reads/writes `data/state.json`
-- `src/growing_agent/tools/runner.py`: allowlisted command runner + log output
-- `src/growing_agent/evaluator.py`: numeric scoring from pytest-style output
-- CLI entrypoint: `python -m growing_agent run --iterations 3 --dry-run`
+1. Runtime settings centralized with `AgentConfig`.
+2. Atomic JSON state writes (`temp` -> `replace`).
+3. Corrupt state file backup and safe recovery.
+4. `reset_state()` support for quick restart.
+5. State normalization for core fields.
+6. Runner timeout handling.
+7. Safety blocklist for risky command tokens.
+8. Run duration captured in `RunResult`.
+9. Log rotation with size limit.
+10. Expanded pytest summary parsing (passed/failed/errors/skipped/xfailed/xpassed).
+11. Detailed evaluator output (`evaluate_pytest_result`).
+12. Early-stop by target score.
+13. Configurable history size limit.
+14. CLI subcommands: `run`, `status`, `reset`.
+15. Unit test suite for all key modules.
+
+## Project structure
+
+- `src/growing_agent/orchestrator.py`: orchestration loop and runtime controls
+- `src/growing_agent/memory.py`: state read/write/reset and corruption handling
+- `src/growing_agent/tools/runner.py`: allowlisted command execution and JSONL logs
+- `src/growing_agent/evaluator.py`: pytest-like output scoring
+- `src/growing_agent/__main__.py`: CLI entrypoint
+- `tests/`: unit tests
 
 ## Run steps
 
-1. Create and activate a virtual environment:
-
+1. Create and activate virtual environment:
    ```bash
-   python -m venv .venv
+   python3 -m venv .venv
    source .venv/bin/activate
    ```
-
-2. Install the project in editable mode:
-
+2. Install editable package:
    ```bash
-   python -m pip install -e .
+   python3 -m pip install -e .
+   ```
+3. Run loop with dry-run (requested command shape is supported):
+   ```bash
+   python3 -m growing_agent run --iterations 3 --dry-run
    ```
 
-3. Run the agent loop:
+## CLI examples
 
-   ```bash
-   python -m growing_agent run --iterations 3 --dry-run
-   ```
+```bash
+# Default dry-run loop
+python3 -m growing_agent run --iterations 3 --dry-run
+
+# Stop when score reaches threshold
+python3 -m growing_agent run --iterations 15 --dry-run --stop-on-target --target-score 0.95
+
+# Inspect current state
+python3 -m growing_agent status
+
+# Reset state file
+python3 -m growing_agent reset
+```
 
 After execution:
 

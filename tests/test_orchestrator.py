@@ -57,6 +57,7 @@ class TestOrchestrator(unittest.TestCase):
                 command=["pytest", "-q"],
                 stop_on_target=True,
                 target_score=1.0,
+                language="en",
             )
             orch = GrowingAgentOrchestrator(
                 memory=MemoryStore(state_path),
@@ -66,6 +67,8 @@ class TestOrchestrator(unittest.TestCase):
             state = orch.run()
             self.assertEqual(state["iteration"], 1)
             self.assertEqual(state["stop_reason"], "target_score_reached")
+            self.assertEqual(state["stop_message"], "Stopped because target score was reached.")
+            self.assertEqual(state["language"], "en")
 
     def test_halt_on_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

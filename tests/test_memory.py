@@ -23,6 +23,7 @@ class TestMemoryStore(unittest.TestCase):
                 "iteration": 4,
                 "last_score": 0.75,
                 "history": [{"iteration": 4, "score": 0.75}],
+                "language": "ja",
             }
             store.write_state(expected)
             self.assertEqual(store.read_state(), expected)

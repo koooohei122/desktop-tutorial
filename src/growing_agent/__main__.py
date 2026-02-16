@@ -5,9 +5,19 @@ import json
 from pathlib import Path
 
 from .config import AgentConfig
+from .i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, translate
 from .memory import MemoryStore
 from .orchestrator import GrowingAgentOrchestrator
 from .tools.runner import CommandRunner
+
+
+def add_language_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--language",
+        choices=SUPPORTED_LANGUAGES,
+        default=None,
+        help=f"Output/state language ({'/'.join(SUPPORTED_LANGUAGES)}).",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -33,12 +43,15 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--target-score", type=float, default=1.0)
     run_parser.add_argument("--stop-on-target", action="store_true")
     run_parser.add_argument("--halt-on-error", action="store_true")
+    add_language_argument(run_parser)
 
     status_parser = subparsers.add_parser("status", help="Show current saved state.")
     status_parser.add_argument("--state-path", default="data/state.json")
+    add_language_argument(status_parser)
 
     reset_parser = subparsers.add_parser("reset", help="Reset saved state.")
     reset_parser.add_argument("--state-path", default="data/state.json")
+    add_language_argument(reset_parser)
     return parser
 
 
@@ -46,6 +59,10 @@ def build_orchestrator_from_args(args: argparse.Namespace) -> GrowingAgentOrches
     command = list(args.command) if args.command else ["pytest", "-q"]
     if command and command[0] == "--":
         command = command[1:]
+
+    memory = MemoryStore(args.state_path)
+    previous = memory.read_state()
+    language = args.language or str(previous.get("language", DEFAULT_LANGUAGE))
 
     config = AgentConfig(
         iterations=args.iterations,
@@ -56,8 +73,8 @@ def build_orchestrator_from_args(args: argparse.Namespace) -> GrowingAgentOrches
         max_history=args.max_history,
         timeout_seconds=args.timeout_seconds,
         halt_on_error=args.halt_on_error,
+        language=language,
     )
-    memory = MemoryStore(args.state_path)
     command_token = config.command[0]
     executable = Path(command_token).name
     runner = CommandRunner(
@@ -74,18 +91,34 @@ def main() -> int:
     if args.subcommand == "run":
         orchestrator = build_orchestrator_from_args(args)
         state = orchestrator.run()
+        language = orchestrator.config.language
+        state["display_language"] = language
+        state["message"] = translate("run_completed", language)
+        if "stop_reason" in state and "stop_message" not in state:
+            state["stop_message"] = translate(str(state["stop_reason"]), language)
         print(json.dumps(state, indent=2, ensure_ascii=True))
         return 0
 
     if args.subcommand == "status":
         memory = MemoryStore(args.state_path)
         state = memory.read_state()
+        language = args.language or str(state.get("language", DEFAULT_LANGUAGE))
+        state["display_language"] = language
+        state["message"] = translate("status_loaded", language)
+        if "stop_reason" in state and "stop_message" not in state:
+            state["stop_message"] = translate(str(state["stop_reason"]), language)
         print(json.dumps(state, indent=2, ensure_ascii=True))
         return 0
 
     if args.subcommand == "reset":
         memory = MemoryStore(args.state_path)
+        previous = memory.read_state()
+        language = args.language or str(previous.get("language", DEFAULT_LANGUAGE))
         state = memory.reset_state()
+        state["language"] = language
+        memory.write_state(state)
+        state["display_language"] = language
+        state["message"] = translate("state_reset", language)
         print(json.dumps(state, indent=2, ensure_ascii=True))
         return 0
 

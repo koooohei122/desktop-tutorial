@@ -7,11 +7,13 @@ from pathlib import Path
 import shutil
 from typing import Any
 
+from .i18n import DEFAULT_LANGUAGE, normalize_language
 
 DEFAULT_STATE: dict[str, Any] = {
     "iteration": 0,
     "last_score": None,
     "history": [],
+    "language": DEFAULT_LANGUAGE,
 }
 
 
@@ -20,6 +22,7 @@ def build_default_state() -> dict[str, Any]:
         "iteration": 0,
         "last_score": None,
         "history": [],
+        "language": DEFAULT_LANGUAGE,
     }
 
 
@@ -100,10 +103,13 @@ class MemoryStore:
         else:
             last_score = None
 
+        language = normalize_language(data.get("language", default["language"]))
+
         normalized = {
             **extras,
             "iteration": max(0, iteration),
             "last_score": last_score,
             "history": history,
+            "language": language,
         }
         return normalized

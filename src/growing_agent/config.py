@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from .i18n import SUPPORTED_LANGUAGES
+
 
 @dataclass
 class AgentConfig:
@@ -15,6 +17,7 @@ class AgentConfig:
     max_history: int = 200
     timeout_seconds: float = 30.0
     halt_on_error: bool = False
+    language: str = "ja"
 
     def __post_init__(self) -> None:
         if self.iterations < 1:
@@ -27,3 +30,8 @@ class AgentConfig:
             raise ValueError("timeout_seconds must be > 0")
         if not 0.0 <= self.target_score <= 1.0:
             raise ValueError("target_score must be between 0.0 and 1.0")
+        if not isinstance(self.language, str):
+            raise ValueError("language must be a string")
+        self.language = self.language.strip().lower()
+        if self.language not in SUPPORTED_LANGUAGES:
+            raise ValueError(f"language must be one of: {', '.join(SUPPORTED_LANGUAGES)}")

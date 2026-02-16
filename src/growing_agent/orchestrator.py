@@ -5,6 +5,7 @@ from typing import Any
 
 from .config import AgentConfig
 from .evaluator import evaluate_pytest_result
+from .i18n import translate
 from .memory import MemoryStore
 from .tools.runner import CommandRunner, RunResult
 
@@ -92,6 +93,7 @@ class GrowingAgentOrchestrator:
             "iteration": plan["iteration"],
             "last_score": score,
             "history": history,
+            "language": self.config.language,
             "metrics": {
                 "iterations_recorded": len(history),
                 "average_score": average_score,
@@ -118,10 +120,12 @@ class GrowingAgentOrchestrator:
             score = float(evaluation["score"])
             if self.config.stop_on_target and score >= self.config.target_score:
                 state["stop_reason"] = "target_score_reached"
+                state["stop_message"] = translate("target_score_reached", self.config.language)
                 self.memory.write_state(state)
                 break
             if self.config.halt_on_error and result.returncode != 0:
                 state["stop_reason"] = "command_error"
+                state["stop_message"] = translate("command_error", self.config.language)
                 self.memory.write_state(state)
                 break
         return state

@@ -48,6 +48,10 @@ loop.
    ```bash
    python3 -m growing_agent run --iterations 3 --dry-run
    ```
+4. Switch language (Japanese/English):
+   ```bash
+   python3 -m growing_agent run --iterations 1 --dry-run --language en
+   ```
 
 ## CLI examples
 
@@ -58,11 +62,17 @@ python3 -m growing_agent run --iterations 3 --dry-run
 # Stop when score reaches threshold
 python3 -m growing_agent run --iterations 15 --dry-run --stop-on-target --target-score 0.95
 
+# Switch output/state language
+python3 -m growing_agent run --iterations 3 --dry-run --language en
+
 # Run a custom command (put --command at the end)
 python3 -m growing_agent run --iterations 1 --state-path /tmp/ga-state.json --log-path /tmp/ga.log --command /usr/bin/python3 -c "print('ok')"
 
 # Inspect current state
 python3 -m growing_agent status
+
+# Inspect state with UI message in Japanese
+python3 -m growing_agent status --language ja
 
 # Reset state file
 python3 -m growing_agent reset

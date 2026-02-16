@@ -103,6 +103,53 @@ class TestCli(unittest.TestCase):
             self.assertEqual(payload["iteration"], 1)
             self.assertEqual(payload["history"][0]["command"][0], sys.executable)
 
+    def test_language_can_be_switched(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+
+            run = self.run_cli(
+                [
+                    "run",
+                    "--iterations",
+                    "1",
+                    "--dry-run",
+                    "--language",
+                    "en",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                ]
+            )
+            self.assertEqual(run.returncode, 0, msg=run.stderr)
+            run_payload = json.loads(run.stdout)
+            self.assertEqual(run_payload["language"], "en")
+            self.assertEqual(run_payload["display_language"], "en")
+            self.assertEqual(run_payload["message"], "Agent run completed.")
+
+            status = self.run_cli(["status", "--state-path", str(state_path)])
+            self.assertEqual(status.returncode, 0, msg=status.stderr)
+            status_payload = json.loads(status.stdout)
+            self.assertEqual(status_payload["language"], "en")
+            self.assertEqual(status_payload["display_language"], "en")
+            self.assertEqual(status_payload["message"], "Loaded current state.")
+
+            reset = self.run_cli(
+                [
+                    "reset",
+                    "--language",
+                    "ja",
+                    "--state-path",
+                    str(state_path),
+                ]
+            )
+            self.assertEqual(reset.returncode, 0, msg=reset.stderr)
+            reset_payload = json.loads(reset.stdout)
+            self.assertEqual(reset_payload["language"], "ja")
+            self.assertEqual(reset_payload["display_language"], "ja")
+            self.assertEqual(reset_payload["message"], "状態を初期化しました。")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -38,7 +38,13 @@ class MemoryStore:
                 data = json.load(file)
             except json.JSONDecodeError:
                 self._backup_corrupt_file()
-                return build_default_state()
+                state = build_default_state()
+                try:
+                    self.write_state(state)
+                except OSError:
+                    # Fallback to in-memory recovery if filesystem writes fail.
+                    pass
+                return state
 
         return self._normalize_state(data)
 
@@ -59,8 +65,14 @@ class MemoryStore:
     def _backup_corrupt_file(self) -> None:
         if not self.state_path.exists():
             return
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
         backup = self.state_path.with_suffix(self.state_path.suffix + f".corrupt-{timestamp}")
+        counter = 1
+        while backup.exists():
+            backup = self.state_path.with_suffix(
+                self.state_path.suffix + f".corrupt-{timestamp}-{counter}"
+            )
+            counter += 1
         shutil.copy2(self.state_path, backup)
 
     def _normalize_state(self, data: Any) -> dict[str, Any]:
@@ -79,6 +91,8 @@ class MemoryStore:
         history = data.get("history", default["history"])
         if not isinstance(history, list):
             history = []
+        else:
+            history = [item for item in history if isinstance(item, dict)]
 
         raw_last_score = data.get("last_score", default["last_score"])
         if isinstance(raw_last_score, (int, float)):

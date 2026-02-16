@@ -39,6 +39,15 @@ class TestMemoryStore(unittest.TestCase):
             self.assertEqual(len(backups), 1)
             self.assertTrue(backups[0].read_text(encoding="utf-8").startswith("{not"))
 
+            # Corrupt file should be replaced with a valid default state.
+            persisted = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(persisted, build_default_state())
+
+            # A second read should not create new backup files.
+            self.assertEqual(store.read_state(), build_default_state())
+            backups_after_second_read = list(Path(tmpdir).glob("state.json.corrupt-*"))
+            self.assertEqual(len(backups_after_second_read), 1)
+
     def test_reset_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = Path(tmpdir) / "state.json"

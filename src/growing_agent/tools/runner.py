@@ -3,7 +3,9 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import time
 from typing import Sequence
@@ -60,8 +62,9 @@ class CommandRunner:
             raise ValueError("timeout_seconds must be > 0")
 
         normalized_command = list(command)
-        executable = Path(normalized_command[0]).name
-        if executable not in self.allowed_commands:
+        executable_token = normalized_command[0]
+        executable = Path(executable_token).name
+        if not self._is_allowlisted_executable(executable_token):
             result = RunResult(
                 command=normalized_command,
                 returncode=126,
@@ -75,7 +78,7 @@ class CommandRunner:
             self._append_log(result)
             return result
 
-        blocked = self._blocked_token(normalized_command)
+        blocked = self._blocked_executable(executable_token)
         if blocked is not None:
             result = RunResult(
                 command=normalized_command,
@@ -174,9 +177,28 @@ class CommandRunner:
             rotated_path.unlink()
         self.log_path.replace(rotated_path)
 
-    def _blocked_token(self, command: list[str]) -> str | None:
-        for token in command:
-            lowered = token.strip().lower()
-            if lowered in BLOCKED_TOKENS:
-                return lowered
+    def _blocked_executable(self, executable_token: str) -> str | None:
+        lowered = Path(executable_token).name.strip().lower().rstrip(".,;:")
+        if lowered in BLOCKED_TOKENS:
+            return lowered
         return None
+
+    def _is_allowlisted_executable(self, executable_token: str) -> bool:
+        if executable_token in self.allowed_commands:
+            return True
+
+        executable_name = Path(executable_token).name
+        if executable_name not in self.allowed_commands:
+            return False
+
+        # If the user passed a bare command name, allow by name.
+        if executable_token == executable_name:
+            return True
+
+        # If a path was passed, only allow it when it resolves to the same
+        # executable that would be chosen from PATH for that command name.
+        on_path = shutil.which(executable_name)
+        if not on_path:
+            return False
+
+        return os.path.realpath(executable_token) == os.path.realpath(on_path)

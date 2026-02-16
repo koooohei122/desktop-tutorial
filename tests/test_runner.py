@@ -56,7 +56,17 @@ class TestCommandRunner(unittest.TestCase):
             self.assertTrue(result.timed_out)
             self.assertEqual(result.returncode, 124)
 
-    def test_blocked_token_is_rejected(self) -> None:
+    def test_blocked_executable_path_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            runner = CommandRunner(
+                allowed_commands={"rm"},
+                log_path=Path(tmpdir) / "run.log",
+            )
+            result = runner.run(["/bin/rm", "--version"])
+            self.assertFalse(result.allowed)
+            self.assertEqual(result.returncode, 127)
+
+    def test_dangerous_token_in_argument_is_not_executable_block(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             executable = Path(sys.executable).name
             runner = CommandRunner(
@@ -64,8 +74,22 @@ class TestCommandRunner(unittest.TestCase):
                 log_path=Path(tmpdir) / "run.log",
             )
             result = runner.run([sys.executable, "-c", "print('safe')", "rm"])
+            self.assertTrue(result.allowed)
+            self.assertEqual(result.returncode, 0)
+
+    def test_allowlist_name_does_not_allow_arbitrary_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_executable = Path(tmpdir) / "pytest"
+            fake_executable.write_text("#!/bin/sh\necho fake\n", encoding="utf-8")
+            fake_executable.chmod(0o755)
+
+            runner = CommandRunner(
+                allowed_commands={"pytest"},
+                log_path=Path(tmpdir) / "run.log",
+            )
+            result = runner.run([str(fake_executable), "-q"])
             self.assertFalse(result.allowed)
-            self.assertEqual(result.returncode, 127)
+            self.assertEqual(result.returncode, 126)
 
     def test_log_rotation(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

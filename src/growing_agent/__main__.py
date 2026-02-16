@@ -19,9 +19,12 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--dry-run", action="store_true")
     run_parser.add_argument(
         "--command",
-        nargs="+",
-        default=["pytest", "-q"],
-        help="Command to execute in each iteration.",
+        nargs=argparse.REMAINDER,
+        default=None,
+        help=(
+            "Command to execute in each iteration. "
+            "When used, place --command at the end of the CLI arguments."
+        ),
     )
     run_parser.add_argument("--state-path", default="data/state.json")
     run_parser.add_argument("--log-path", default="data/runner.log")
@@ -40,10 +43,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def build_orchestrator_from_args(args: argparse.Namespace) -> GrowingAgentOrchestrator:
+    command = list(args.command) if args.command else ["pytest", "-q"]
+    if command and command[0] == "--":
+        command = command[1:]
+
     config = AgentConfig(
         iterations=args.iterations,
         dry_run=args.dry_run,
-        command=list(args.command),
+        command=command,
         target_score=args.target_score,
         stop_on_target=args.stop_on_target,
         max_history=args.max_history,

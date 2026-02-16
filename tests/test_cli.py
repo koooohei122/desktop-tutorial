@@ -79,6 +79,30 @@ class TestCli(unittest.TestCase):
             self.assertEqual(payload["stop_reason"], "target_score_reached")
             self.assertEqual(payload["iteration"], 1)
 
+    def test_run_with_custom_command_supports_hyphen_args(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+            result = self.run_cli(
+                [
+                    "run",
+                    "--iterations",
+                    "1",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                    "--command",
+                    sys.executable,
+                    "-c",
+                    "print('ok')",
+                ]
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["iteration"], 1)
+            self.assertEqual(payload["history"][0]["command"][0], sys.executable)
+
 
 if __name__ == "__main__":
     unittest.main()

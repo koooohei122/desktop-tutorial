@@ -58,6 +58,9 @@ python3 -m growing_agent run --iterations 3 --dry-run
 # Stop when score reaches threshold
 python3 -m growing_agent run --iterations 15 --dry-run --stop-on-target --target-score 0.95
 
+# Run a custom command (put --command at the end)
+python3 -m growing_agent run --iterations 1 --state-path /tmp/ga-state.json --log-path /tmp/ga.log --command /usr/bin/python3 -c "print('ok')"
+
 # Inspect current state
 python3 -m growing_agent status
 

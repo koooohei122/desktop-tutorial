@@ -17,7 +17,7 @@ class TestAgentConfig(unittest.TestCase):
 
     def test_invalid_language_raises(self) -> None:
         with self.assertRaises(ValueError):
-            AgentConfig(language="fr")
+            AgentConfig(language="de")
 
     def test_non_string_language_raises(self) -> None:
         with self.assertRaises(ValueError):

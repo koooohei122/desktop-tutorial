@@ -150,6 +150,47 @@ class TestCli(unittest.TestCase):
             self.assertEqual(reset_payload["display_language"], "ja")
             self.assertEqual(reset_payload["message"], "状態を初期化しました。")
 
+    def test_status_retranslates_stop_message_for_requested_language(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+
+            run = self.run_cli(
+                [
+                    "run",
+                    "--iterations",
+                    "5",
+                    "--dry-run",
+                    "--stop-on-target",
+                    "--target-score",
+                    "1.0",
+                    "--language",
+                    "ja",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                ]
+            )
+            self.assertEqual(run.returncode, 0, msg=run.stderr)
+
+            status = self.run_cli(
+                [
+                    "status",
+                    "--language",
+                    "en",
+                    "--state-path",
+                    str(state_path),
+                ]
+            )
+            self.assertEqual(status.returncode, 0, msg=status.stderr)
+            payload = json.loads(status.stdout)
+            self.assertEqual(payload["display_language"], "en")
+            self.assertEqual(
+                payload["stop_message"],
+                "Stopped because target score was reached.",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

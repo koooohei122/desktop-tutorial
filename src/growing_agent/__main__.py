@@ -94,7 +94,7 @@ def main() -> int:
         language = orchestrator.config.language
         state["display_language"] = language
         state["message"] = translate("run_completed", language)
-        if "stop_reason" in state and "stop_message" not in state:
+        if "stop_reason" in state:
             state["stop_message"] = translate(str(state["stop_reason"]), language)
         print(json.dumps(state, indent=2, ensure_ascii=False))
         return 0
@@ -105,7 +105,7 @@ def main() -> int:
         language = args.language or str(state.get("language", DEFAULT_LANGUAGE))
         state["display_language"] = language
         state["message"] = translate("status_loaded", language)
-        if "stop_reason" in state and "stop_message" not in state:
+        if "stop_reason" in state:
             state["stop_message"] = translate(str(state["stop_reason"]), language)
         print(json.dumps(state, indent=2, ensure_ascii=False))
         return 0

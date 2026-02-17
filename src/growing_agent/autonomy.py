@@ -2226,7 +2226,7 @@ class AutonomousWorker:
                 "success": True,
                 "summary": "Window focus simulated (dry-run).",
                 "details": {
-                    "window_title": normalized_title,
+                    "window_title": normalized_title if normalized_title else None,
                     "window_class": normalized_class if normalized_class else None,
                     "window_pid": normalized_pid,
                     "window_index": safe_index,
@@ -2259,7 +2259,7 @@ class AutonomousWorker:
                 "summary": str(candidate_result.get("summary", "No matching window found for provided selectors.")),
                 "details": {
                     **candidate_details,
-                    "window_title": normalized_title,
+                    "window_title": normalized_title if normalized_title else None,
                     "window_class": normalized_class if normalized_class else None,
                     "window_pid": normalized_pid,
                     "window_index": safe_index,
@@ -2278,7 +2278,7 @@ class AutonomousWorker:
                 "success": False,
                 "summary": "window_index is out of range for matched windows.",
                 "details": {
-                    "window_title": normalized_title,
+                    "window_title": normalized_title if normalized_title else None,
                     "window_class": normalized_class if normalized_class else None,
                     "window_pid": normalized_pid,
                     "window_index": safe_index,
@@ -2345,7 +2345,7 @@ class AutonomousWorker:
                 "success": False,
                 "summary": "Window activation failed or could not be verified.",
                 "details": {
-                    "window_title": normalized_title,
+                    "window_title": normalized_title if normalized_title else None,
                     "window_class": normalized_class if normalized_class else None,
                     "window_pid": normalized_pid,
                     "window_index": safe_index,
@@ -2364,7 +2364,7 @@ class AutonomousWorker:
             "success": True,
             "summary": "Window focus completed.",
             "details": {
-                "window_title": normalized_title,
+                "window_title": normalized_title if normalized_title else None,
                 "window_class": normalized_class if normalized_class else None,
                 "window_pid": normalized_pid,
                 "window_index": safe_index,

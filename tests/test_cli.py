@@ -735,6 +735,41 @@ class TestCli(unittest.TestCase):
             self.assertTrue(type_steps)
             self.assertIn("google.com/search", type_steps[0]["payload"]["text"])
 
+    def test_run_prompt_notepad_diary_workflow(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+            result = self.run_cli(
+                [
+                    "run-prompt",
+                    "--prompt",
+                    "メモ帳を開いて今日の日記を書いて",
+                    "--cycles",
+                    "2",
+                    "--dry-run",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                    "--language",
+                    "en",
+                ]
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["planned"]["intent"], "generic_prompt_workflow")
+            mission_steps = payload["task"]["payload"]["steps"]
+            self.assertEqual(mission_steps[0]["task_type"], "command")
+            self.assertEqual(mission_steps[0]["payload"]["command"][0], "gedit")
+            diary_steps = [
+                step
+                for step in mission_steps
+                if step.get("task_type") == "desktop_action"
+                and step.get("payload", {}).get("action") == "type_text"
+            ]
+            self.assertTrue(diary_steps)
+            self.assertIn("日記", diary_steps[-1]["payload"]["text"])
+
 
 if __name__ == "__main__":
     unittest.main()

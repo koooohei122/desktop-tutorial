@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from dataclasses import dataclass
 import re
 from typing import Any
@@ -24,6 +25,8 @@ PLAY_KEYWORDS = ("play", "listen", "再生", "流して", "聴", "聞")
 OPEN_HINT_KEYWORDS = ("open", "launch", "start", "開いて", "開く", "起動", "立ち上げ")
 SEARCH_HINT_KEYWORDS = ("search", "find", "look up", "検索", "探して", "調べて", "見つけて")
 TYPE_HINT_KEYWORDS = ("type", "enter", "入力", "タイプ")
+WRITE_HINT_KEYWORDS = ("write", "書いて", "書く", "つけて", "残して")
+DIARY_HINT_KEYWORDS = ("diary", "journal", "日記")
 
 BROWSER_HINTS: tuple[tuple[tuple[str, ...], tuple[str, ...]], ...] = (
     (("google chrome", "chrome", "クローム", "グーグルクローム"), ("google-chrome", "chromium-browser", "chromium")),
@@ -112,6 +115,12 @@ APP_PROFILES: tuple[AppProfile, ...] = (
         name="spotify",
         keywords=("spotify", "スポティファイ"),
         commands=("spotify",),
+        is_browser=False,
+    ),
+    AppProfile(
+        name="gedit",
+        keywords=("メモ帳", "notepad", "text editor", "テキストエディタ", "gedit", "kate", "mousepad", "xed", "pluma"),
+        commands=("gedit", "xed", "mousepad", "kate", "notepadqq", "pluma"),
         is_browser=False,
     ),
 )
@@ -333,6 +342,24 @@ def _plan_generic_prompt_request(prompt: str, normalized: str, priority: int) ->
             preview_actions.append(
                 {"clause_index": index, "action": "type_text", "text_excerpt": typed_text[:80]}
             )
+        else:
+            diary_text = _extract_diary_text_template(clause_text, clause_norm)
+            if diary_text:
+                steps.append(
+                    {
+                        "task_type": "desktop_action",
+                        "title": "Write diary template",
+                        "payload": {"action": "type_text", "text": diary_text, "delay_ms": 12},
+                        "continue_on_failure": True,
+                    }
+                )
+                preview_actions.append(
+                    {
+                        "clause_index": index,
+                        "action": "write_diary_template",
+                        "text_excerpt": diary_text[:80],
+                    }
+                )
 
         hotkey = _extract_hotkey(clause_text, clause_norm)
         if hotkey:
@@ -593,6 +620,32 @@ def _extract_type_text(clause_text: str, clause_normalized: str) -> str | None:
         if text and " key" not in text:
             return text
     return None
+
+
+def _extract_diary_text_template(clause_text: str, clause_normalized: str) -> str | None:
+    if not any(keyword in clause_normalized for keyword in DIARY_HINT_KEYWORDS):
+        return None
+    if not any(keyword in clause_normalized or keyword in clause_text for keyword in WRITE_HINT_KEYWORDS):
+        return None
+
+    today = date.today().isoformat()
+    if _contains_japanese(clause_text):
+        return (
+            f"{today} 日記\n"
+            "- 今日の出来事:\n"
+            "- 良かったこと:\n"
+            "- 明日やること:\n"
+        )
+    return (
+        f"{today} Diary\n"
+        "- What happened today:\n"
+        "- What went well:\n"
+        "- Plan for tomorrow:\n"
+    )
+
+
+def _contains_japanese(text: str) -> bool:
+    return bool(re.search(r"[ぁ-んァ-ン一-龥]", text))
 
 
 def _extract_hotkey(clause_text: str, clause_normalized: str) -> list[str] | None:

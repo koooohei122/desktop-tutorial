@@ -77,6 +77,7 @@ python3 -m growing_agent run-prompt --prompt "google chromeを開いて、今日
 # Generic prompt planning examples (app open + search + input + hotkey)
 python3 -m growing_agent run-prompt --prompt "Firefoxを開いて、cursor agentをgoogleで検索して"
 python3 -m growing_agent run-prompt --prompt "「hello world」と入力して、Enterを押して"
+python3 -m growing_agent run-prompt --prompt "メモ帳を開いて今日の日記を書いて"
 
 # Supported generic prompt intents:
 # - open app (Chrome/Edge/Firefox/Terminal/VSCode/Slack/Spotify)
@@ -230,6 +231,7 @@ python3 -m growing_agent enqueue-mission --title "mission 1" --steps-json '[{"ta
 python3 -m growing_agent run-prompt --prompt "open Google Chrome and play recommended songs on YouTube" --dry-run
 python3 -m growing_agent run-prompt --prompt "open Firefox and search python asyncio on Google" --dry-run
 python3 -m growing_agent run-prompt --prompt "type \"hello world\" and press Enter" --dry-run
+python3 -m growing_agent run-prompt --prompt "open notepad and write today's diary" --dry-run
 
 # Reset state file
 python3 -m growing_agent reset

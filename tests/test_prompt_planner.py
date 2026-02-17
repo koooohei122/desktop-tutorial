@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 import unittest
 
 from growing_agent.prompt_planner import plan_prompt_task
@@ -66,6 +67,26 @@ class TestPromptPlanner(unittest.TestCase):
         self.assertEqual(type_steps[0]["payload"]["text"], "hello world")
         self.assertTrue(hotkey_steps)
         self.assertEqual(hotkey_steps[0]["payload"]["keys"], ["Return"])
+
+    def test_plan_notepad_diary_prompt(self) -> None:
+        prompt = "メモ帳を開いて今日の日記を書いて"
+        planned = plan_prompt_task(prompt=prompt, priority=8)
+        self.assertEqual(planned["intent"], "generic_prompt_workflow")
+        steps = planned["payload"]["steps"]
+        self.assertTrue(steps)
+        self.assertEqual(steps[0]["task_type"], "command")
+        self.assertEqual(steps[0]["payload"]["command"][0], "gedit")
+
+        type_steps = [
+            step
+            for step in steps
+            if step.get("task_type") == "desktop_action"
+            and step.get("payload", {}).get("action") == "type_text"
+        ]
+        self.assertTrue(type_steps)
+        diary_text = type_steps[-1]["payload"]["text"]
+        self.assertIn("日記", diary_text)
+        self.assertIn(date.today().isoformat(), diary_text)
 
 
 if __name__ == "__main__":

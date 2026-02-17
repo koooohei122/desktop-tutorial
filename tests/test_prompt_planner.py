@@ -26,6 +26,47 @@ class TestPromptPlanner(unittest.TestCase):
         with self.assertRaises(ValueError):
             plan_prompt_task(prompt="状態を確認して", priority=5)
 
+    def test_plan_generic_open_and_search_prompt(self) -> None:
+        prompt = "Firefoxを開いて、python asyncioをgoogleで検索して"
+        planned = plan_prompt_task(prompt=prompt, priority=7)
+        self.assertEqual(planned["intent"], "generic_prompt_workflow")
+        self.assertEqual(planned["task_type"], "mission")
+        payload = planned["payload"]
+        steps = payload.get("steps", [])
+        self.assertTrue(isinstance(steps, list) and len(steps) >= 2)
+        self.assertEqual(steps[0]["task_type"], "command")
+        self.assertEqual(steps[0]["payload"]["command"][0], "firefox")
+        type_steps = [
+            step
+            for step in steps
+            if step.get("task_type") == "desktop_action"
+            and step.get("payload", {}).get("action") == "type_text"
+        ]
+        self.assertTrue(type_steps)
+        self.assertIn("google.com/search", type_steps[0]["payload"]["text"])
+
+    def test_plan_generic_type_and_hotkey_prompt(self) -> None:
+        prompt = "「hello world」と入力して、Enterを押して"
+        planned = plan_prompt_task(prompt=prompt, priority=6)
+        self.assertEqual(planned["intent"], "generic_prompt_workflow")
+        steps = planned["payload"]["steps"]
+        type_steps = [
+            step
+            for step in steps
+            if step.get("task_type") == "desktop_action"
+            and step.get("payload", {}).get("action") == "type_text"
+        ]
+        hotkey_steps = [
+            step
+            for step in steps
+            if step.get("task_type") == "desktop_action"
+            and step.get("payload", {}).get("action") == "hotkey"
+        ]
+        self.assertTrue(type_steps)
+        self.assertEqual(type_steps[0]["payload"]["text"], "hello world")
+        self.assertTrue(hotkey_steps)
+        self.assertEqual(hotkey_steps[0]["payload"]["keys"], ["Return"])
+
 
 if __name__ == "__main__":
     unittest.main()

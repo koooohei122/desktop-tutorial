@@ -698,6 +698,43 @@ class TestCli(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("Unsupported prompt intent", result.stderr)
 
+    def test_run_prompt_generic_search_workflow(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+            result = self.run_cli(
+                [
+                    "run-prompt",
+                    "--prompt",
+                    "Firefoxを開いて、cursor agentをgoogleで検索して",
+                    "--cycles",
+                    "2",
+                    "--dry-run",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                    "--language",
+                    "en",
+                ]
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["planned"]["intent"], "generic_prompt_workflow")
+            self.assertEqual(payload["task"]["task_type"], "mission")
+            self.assertEqual(payload["summary"]["executed_count"], 1)
+            mission_steps = payload["task"]["payload"]["steps"]
+            self.assertEqual(mission_steps[0]["task_type"], "command")
+            self.assertEqual(mission_steps[0]["payload"]["command"][0], "firefox")
+            type_steps = [
+                step
+                for step in mission_steps
+                if step.get("task_type") == "desktop_action"
+                and step.get("payload", {}).get("action") == "type_text"
+            ]
+            self.assertTrue(type_steps)
+            self.assertIn("google.com/search", type_steps[0]["payload"]["text"])
+
 
 if __name__ == "__main__":
     unittest.main()

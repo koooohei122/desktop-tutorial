@@ -1,0 +1,16 @@
+{
+  "workflows": {
+    "open_app": [
+      {
+        "task_type": "desktop_action",
+        "title": "Open app (${app_name})",
+        "payload": {
+          "action": "launch_app",
+          "app_name": "${app_name}"
+        },
+        "priority": 7,
+        "continue_on_failure": true
+      }
+    ]
+  }
+}

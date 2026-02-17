@@ -348,6 +348,17 @@ def build_parser() -> argparse.ArgumentParser:
     run_prompt_parser.add_argument("--cycles", type=int, default=3)
     run_prompt_parser.add_argument("--dry-run", action="store_true")
     run_prompt_parser.add_argument(
+        "--prompt-catalog-dir",
+        default=None,
+        help="Directory containing prompt catalog JSON files (apps/workflows/planner/platforms).",
+    )
+    run_prompt_parser.add_argument(
+        "--prompt-plugin",
+        action="append",
+        default=None,
+        help="Plugin module, file, or directory to register extra prompt handlers.",
+    )
+    run_prompt_parser.add_argument(
         "--allow-command",
         action="append",
         default=None,
@@ -630,7 +641,12 @@ def main() -> int:
     if args.subcommand == "run-prompt":
         worker = build_autonomous_worker_from_args(args)
         try:
-            planned = plan_prompt_task(prompt=args.prompt, priority=args.priority)
+            planned = plan_prompt_task(
+                prompt=args.prompt,
+                priority=args.priority,
+                catalog_dir=args.prompt_catalog_dir,
+                plugin_paths=args.prompt_plugin,
+            )
             task = worker.enqueue(
                 task_type=str(planned["task_type"]),
                 title=str(planned["title"]),

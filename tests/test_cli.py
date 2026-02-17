@@ -798,6 +798,52 @@ class TestCli(unittest.TestCase):
             self.assertTrue(diary_steps)
             self.assertIn("日記", diary_steps[-1]["payload"]["text"])
 
+    def test_run_prompt_with_custom_catalog_dir(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+            catalog_dir = Path(tmpdir) / "catalog"
+            catalog_dir.mkdir(parents=True, exist_ok=True)
+            (catalog_dir / "apps.json").write_text(
+                json.dumps(
+                    {
+                        "apps": [
+                            {
+                                "canonical": "AcmeNote",
+                                "aliases": ["acme note", "acmenote"],
+                                "is_browser": False,
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = self.run_cli(
+                [
+                    "run-prompt",
+                    "--prompt",
+                    "acme noteを開いて",
+                    "--prompt-catalog-dir",
+                    str(catalog_dir),
+                    "--cycles",
+                    "1",
+                    "--dry-run",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                    "--language",
+                    "en",
+                ]
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            payload = json.loads(result.stdout)
+            mission_steps = payload["task"]["payload"]["steps"]
+            self.assertTrue(mission_steps)
+            self.assertEqual(mission_steps[0]["payload"]["action"], "launch_app")
+            self.assertEqual(mission_steps[0]["payload"]["app_name"], "AcmeNote")
+
 
 if __name__ == "__main__":
     unittest.main()

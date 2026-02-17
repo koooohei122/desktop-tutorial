@@ -1,0 +1,42 @@
+{
+  "apps": [
+    {
+      "canonical": "Google Chrome",
+      "aliases": ["google chrome", "chrome", "クローム", "グーグルクローム"],
+      "is_browser": true,
+      "launch_candidates": ["google-chrome", "chromium-browser", "chromium"]
+    },
+    {
+      "canonical": "Microsoft Edge",
+      "aliases": ["microsoft edge", "edge", "エッジ"],
+      "is_browser": true,
+      "launch_candidates": ["microsoft-edge", "google-chrome", "chromium-browser", "chromium"]
+    },
+    {
+      "canonical": "Firefox",
+      "aliases": ["firefox", "ファイアフォックス"],
+      "is_browser": true,
+      "launch_candidates": ["firefox", "google-chrome", "chromium-browser", "chromium"]
+    },
+    {
+      "canonical": "VSCode",
+      "aliases": ["vscode", "visual studio code", "vs code", "code"],
+      "is_browser": false
+    },
+    {
+      "canonical": "Terminal",
+      "aliases": ["terminal", "ターミナル"],
+      "is_browser": false
+    },
+    {
+      "canonical": "メモ帳",
+      "aliases": ["notepad", "メモ帳", "text editor", "テキストエディタ"],
+      "is_browser": false
+    },
+    {
+      "canonical": "Obsidian",
+      "aliases": ["obsidian"],
+      "is_browser": false
+    }
+  ]
+}

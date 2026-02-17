@@ -6,6 +6,9 @@ import re
 from typing import Any
 from urllib.parse import quote_plus
 
+from .prompt_catalog import PromptCatalog, load_prompt_catalog
+from .prompt_registry import PromptHandlerRegistry, load_prompt_plugins
+
 
 YOUTUBE_KEYWORDS = ("youtube", "ユーチューブ", "ようつべ", "yt")
 MUSIC_KEYWORDS = (
@@ -27,28 +30,6 @@ SEARCH_HINT_KEYWORDS = ("search", "find", "look up", "検索", "探して", "調
 TYPE_HINT_KEYWORDS = ("type", "enter", "入力", "タイプ")
 WRITE_HINT_KEYWORDS = ("write", "書いて", "書く", "つけて", "残して")
 DIARY_HINT_KEYWORDS = ("diary", "journal", "日記")
-
-BROWSER_HINTS: tuple[tuple[tuple[str, ...], tuple[str, ...]], ...] = (
-    (("google chrome", "chrome", "クローム", "グーグルクローム"), ("google-chrome", "chromium-browser", "chromium")),
-    (("microsoft edge", "edge", "エッジ"), ("microsoft-edge", "google-chrome", "chromium-browser", "chromium")),
-    (("firefox", "ファイアフォックス"), ("firefox", "google-chrome", "chromium-browser", "chromium")),
-)
-
-PLATFORM_ALIASES: dict[str, tuple[str, ...]] = {
-    "youtube": ("youtube", "ユーチューブ", "ようつべ", "yt"),
-    "google": ("google", "グーグル"),
-    "github": ("github", "ギットハブ"),
-    "wikipedia": ("wikipedia", "ウィキペディア"),
-    "bing": ("bing", "ビング"),
-}
-
-PLATFORM_SEARCH_URL_TEMPLATES: dict[str, str] = {
-    "youtube": "https://www.youtube.com/results?search_query={query}",
-    "google": "https://www.google.com/search?q={query}",
-    "github": "https://github.com/search?q={query}",
-    "wikipedia": "https://wikipedia.org/w/index.php?search={query}",
-    "bing": "https://www.bing.com/search?q={query}",
-}
 
 URL_PATTERN = re.compile(r"https?://[^\s\"'<>]+", flags=re.IGNORECASE)
 
@@ -76,16 +57,42 @@ class PromptPlan:
     preview: dict[str, Any]
 
 
-def plan_prompt_task(prompt: str, priority: int = 8) -> dict[str, Any]:
+@dataclass
+class GenericPlannerState:
+    catalog: PromptCatalog
+    prompt: str
+    normalized_prompt: str
+    clauses: list[str]
+    steps: list[dict[str, Any]]
+    preview_actions: list[dict[str, Any]]
+    browser_commands: list[str]
+    browser_opened: bool = False
+    browser_session_ready: bool = False
+    browser_hint: bool = False
+
+
+def plan_prompt_task(
+    prompt: str,
+    priority: int = 8,
+    catalog_dir: str | None = None,
+    plugin_paths: list[str] | None = None,
+) -> dict[str, Any]:
     if not isinstance(prompt, str) or not prompt.strip():
         raise ValueError("prompt must be a non-empty string")
     normalized = _normalize_prompt(prompt)
+    catalog = load_prompt_catalog(catalog_dir)
 
     if _looks_like_youtube_music_request(normalized):
-        specialized = _plan_youtube_music_request(prompt, normalized, priority)
+        specialized = _plan_youtube_music_request(prompt, normalized, priority, catalog)
         return _plan_to_dict(specialized)
 
-    generic = _plan_generic_prompt_request(prompt, normalized, priority)
+    generic = _plan_generic_prompt_request(
+        prompt=prompt,
+        normalized=normalized,
+        priority=priority,
+        catalog=catalog,
+        plugin_paths=plugin_paths,
+    )
     if generic is not None:
         return _plan_to_dict(generic)
 
@@ -119,11 +126,16 @@ def _looks_like_youtube_music_request(normalized: str) -> bool:
     return any(keyword in normalized for keyword in MUSIC_KEYWORDS)
 
 
-def _plan_youtube_music_request(prompt: str, normalized: str, priority: int) -> PromptPlan:
+def _plan_youtube_music_request(
+    prompt: str,
+    normalized: str,
+    priority: int,
+    catalog: PromptCatalog,
+) -> PromptPlan:
     topic = _extract_music_topic(prompt, normalized)
     query = _build_youtube_query(topic, normalized)
-    browser_commands = _browser_launch_candidates(normalized)
-    search_url = _build_platform_search_url("youtube", query)
+    browser_commands = _browser_launch_candidates(normalized, catalog)
+    search_url = _build_platform_search_url("youtube", query, catalog)
 
     steps, _launched = _build_platform_search_steps(
         platform="youtube",
@@ -132,6 +144,7 @@ def _plan_youtube_music_request(prompt: str, normalized: str, priority: int) -> 
         browser_commands=browser_commands,
         launch_browser=True,
         use_address_bar_navigation=False,
+        catalog=catalog,
     )
     steps.append(
         {
@@ -170,167 +183,41 @@ def _plan_youtube_music_request(prompt: str, normalized: str, priority: int) -> 
     )
 
 
-def _plan_generic_prompt_request(prompt: str, normalized: str, priority: int) -> PromptPlan | None:
+def _plan_generic_prompt_request(
+    prompt: str,
+    normalized: str,
+    priority: int,
+    catalog: PromptCatalog,
+    plugin_paths: list[str] | None,
+) -> PromptPlan | None:
     clauses = _split_prompt_into_clauses(prompt)
     if not clauses:
         clauses = [prompt.strip()]
 
-    steps: list[dict[str, Any]] = []
-    preview_actions: list[dict[str, Any]] = []
-    browser_commands = _browser_launch_candidates(normalized)
-    browser_opened = False
-    browser_session_ready = False
-    browser_hint = _prompt_mentions_browser(normalized)
+    state = GenericPlannerState(
+        catalog=catalog,
+        prompt=prompt,
+        normalized_prompt=normalized,
+        clauses=clauses,
+        steps=[],
+        preview_actions=[],
+        browser_commands=_browser_launch_candidates(normalized, catalog),
+        browser_opened=False,
+        browser_session_ready=False,
+        browser_hint=_prompt_mentions_browser(normalized, catalog),
+    )
+    registry = _build_generic_handler_registry(catalog, plugin_paths)
 
     for index, clause in enumerate(clauses, start=1):
         clause_text = clause.strip()
         if not clause_text:
             continue
         clause_norm = _normalize_prompt(clause_text)
+        for handler_name in registry.ordered_names():
+            handler = registry.get(handler_name)
+            handler(state, clause_text, clause_norm, index)
 
-        open_app_request = _extract_open_app_request(clause_text, clause_norm)
-        if open_app_request is not None:
-            app_name, is_browser_app = open_app_request
-            steps.append(
-                _build_launch_app_step(
-                    app_name=app_name,
-                    title=f"Open app ({app_name})",
-                )
-            )
-            preview_actions.append(
-                {"clause_index": index, "action": "open_app", "app": app_name}
-            )
-            if is_browser_app:
-                browser_opened = True
-                browser_session_ready = True
-
-        for url in _extract_urls(clause_text):
-            steps.append(
-                {
-                    "task_type": "desktop_action",
-                    "title": f"Open URL ({url[:60]})",
-                    "payload": {"action": "open_url", "url": url},
-                    "continue_on_failure": True,
-                }
-            )
-            preview_actions.append(
-                {"clause_index": index, "action": "open_url", "url": url}
-            )
-            browser_opened = True
-
-        search_request = _extract_platform_search_request(clause_text, clause_norm)
-        if search_request is not None:
-            platform, query, wants_play = search_request
-            search_steps, launched = _build_platform_search_steps(
-                platform=platform,
-                query=query,
-                wants_play=wants_play,
-                browser_commands=browser_commands,
-                launch_browser=bool(browser_hint and not browser_opened),
-                use_address_bar_navigation=bool(browser_session_ready),
-            )
-            steps.extend(search_steps)
-            preview_actions.append(
-                {
-                    "clause_index": index,
-                    "action": "platform_search",
-                    "platform": platform,
-                    "query": query,
-                    "wants_play": wants_play,
-                }
-            )
-            if launched:
-                browser_opened = True
-                browser_session_ready = True
-            else:
-                browser_opened = True
-        else:
-            generic_query = _extract_generic_search_query(clause_text, clause_norm)
-            if generic_query:
-                search_steps, launched = _build_platform_search_steps(
-                    platform="google",
-                    query=generic_query,
-                    wants_play=False,
-                    browser_commands=browser_commands,
-                    launch_browser=bool(browser_hint and not browser_opened),
-                    use_address_bar_navigation=bool(browser_session_ready),
-                )
-                steps.extend(search_steps)
-                preview_actions.append(
-                    {
-                        "clause_index": index,
-                        "action": "generic_search",
-                        "platform": "google",
-                        "query": generic_query,
-                    }
-                )
-                if launched:
-                    browser_opened = True
-                    browser_session_ready = True
-                else:
-                    browser_opened = True
-
-        typed_text = _extract_type_text(clause_text, clause_norm)
-        if typed_text:
-            steps.append(
-                {
-                    "task_type": "desktop_action",
-                    "title": "Type requested text",
-                    "payload": {"action": "type_text", "text": typed_text, "delay_ms": 10},
-                    "continue_on_failure": True,
-                }
-            )
-            preview_actions.append(
-                {"clause_index": index, "action": "type_text", "text_excerpt": typed_text[:80]}
-            )
-        else:
-            diary_text = _extract_diary_text_template(clause_text, clause_norm)
-            if diary_text:
-                steps.append(
-                    {
-                        "task_type": "desktop_action",
-                        "title": "Write diary template",
-                        "payload": {"action": "type_text", "text": diary_text, "delay_ms": 12},
-                        "continue_on_failure": True,
-                    }
-                )
-                preview_actions.append(
-                    {
-                        "clause_index": index,
-                        "action": "write_diary_template",
-                        "text_excerpt": diary_text[:80],
-                    }
-                )
-
-        hotkey = _extract_hotkey(clause_text, clause_norm)
-        if hotkey:
-            steps.append(
-                {
-                    "task_type": "desktop_action",
-                    "title": "Press requested hotkey",
-                    "payload": {"action": "hotkey", "keys": hotkey},
-                    "continue_on_failure": True,
-                }
-            )
-            preview_actions.append(
-                {"clause_index": index, "action": "hotkey", "keys": hotkey}
-            )
-
-        wait_seconds = _extract_wait_seconds(clause_text, clause_norm)
-        if wait_seconds is not None:
-            steps.append(
-                {
-                    "task_type": "desktop_action",
-                    "title": f"Wait {wait_seconds:.2f}s",
-                    "payload": {"action": "wait", "seconds": wait_seconds},
-                    "continue_on_failure": True,
-                }
-            )
-            preview_actions.append(
-                {"clause_index": index, "action": "wait", "seconds": wait_seconds}
-            )
-
-    if not steps:
+    if not state.steps:
         return None
 
     safe_priority = max(1, min(10, int(priority)))
@@ -339,7 +226,7 @@ def _plan_generic_prompt_request(prompt: str, normalized: str, priority: int) ->
         "intent": "generic_prompt_workflow",
         "max_step_failures": 2,
         "auto_recovery": True,
-        "steps": steps,
+        "steps": state.steps,
     }
     shortened_prompt = prompt.strip().replace("\n", " ")
     if len(shortened_prompt) > 60:
@@ -352,11 +239,213 @@ def _plan_generic_prompt_request(prompt: str, normalized: str, priority: int) ->
         payload=payload,
         preview={
             "clauses": clauses,
-            "actions": preview_actions,
-            "action_count": len(preview_actions),
+            "actions": state.preview_actions,
+            "action_count": len(state.preview_actions),
             "note": "Parsed with heuristic prompt planner.",
         },
     )
+
+
+def _build_generic_handler_registry(
+    catalog: PromptCatalog,
+    plugin_paths: list[str] | None,
+) -> PromptHandlerRegistry:
+    registry = PromptHandlerRegistry(preferred_order=list(catalog.handler_order))
+    registry.register("open_app", _handle_open_app)
+    registry.register("open_url", _handle_open_url)
+    registry.register("platform_search", _handle_platform_search)
+    registry.register("generic_search", _handle_generic_search)
+    registry.register("type_or_diary", _handle_type_or_diary)
+    registry.register("hotkey", _handle_hotkey)
+    registry.register("wait_seconds", _handle_wait_seconds)
+    try:
+        load_prompt_plugins(registry, plugin_paths)
+    except Exception as error:
+        raise ValueError(f"failed to load prompt plugins: {error}") from error
+    return registry
+
+
+def _handle_open_app(state: GenericPlannerState, clause_text: str, clause_normalized: str, clause_index: int) -> None:
+    open_app_request = _extract_open_app_request(clause_text, clause_normalized, state.catalog)
+    if open_app_request is None:
+        return
+    app_name_raw, browser_hint = open_app_request
+    app_name, browser_from_catalog = state.catalog.resolve_app(app_name_raw)
+    is_browser_app = bool(browser_hint or browser_from_catalog)
+
+    workflow_steps = state.catalog.render_workflow("open_app", {"app_name": app_name})
+    if not workflow_steps:
+        workflow_steps = [_build_launch_app_step(app_name=app_name, title=f"Open app ({app_name})")]
+    state.steps.extend(workflow_steps)
+    state.preview_actions.append({"clause_index": clause_index, "action": "open_app", "app": app_name})
+
+    if is_browser_app:
+        state.browser_opened = True
+        state.browser_session_ready = True
+
+
+def _handle_open_url(state: GenericPlannerState, clause_text: str, _clause_normalized: str, clause_index: int) -> None:
+    for url in _extract_urls(clause_text):
+        state.steps.append(
+            {
+                "task_type": "desktop_action",
+                "title": f"Open URL ({url[:60]})",
+                "payload": {"action": "open_url", "url": url},
+                "continue_on_failure": True,
+            }
+        )
+        state.preview_actions.append({"clause_index": clause_index, "action": "open_url", "url": url})
+        state.browser_opened = True
+
+
+def _handle_platform_search(
+    state: GenericPlannerState,
+    clause_text: str,
+    clause_normalized: str,
+    clause_index: int,
+) -> None:
+    search_request = _extract_platform_search_request(clause_text, clause_normalized, state.catalog)
+    if search_request is None:
+        return
+    platform, query, wants_play = search_request
+    search_steps, launched = _build_platform_search_steps(
+        platform=platform,
+        query=query,
+        wants_play=wants_play,
+        browser_commands=state.browser_commands,
+        launch_browser=bool(state.browser_hint and not state.browser_opened),
+        use_address_bar_navigation=bool(state.browser_session_ready),
+        catalog=state.catalog,
+    )
+    state.steps.extend(search_steps)
+    state.preview_actions.append(
+        {
+            "clause_index": clause_index,
+            "action": "platform_search",
+            "platform": platform,
+            "query": query,
+            "wants_play": wants_play,
+        }
+    )
+    if launched:
+        state.browser_opened = True
+        state.browser_session_ready = True
+    else:
+        state.browser_opened = True
+
+
+def _handle_generic_search(
+    state: GenericPlannerState,
+    clause_text: str,
+    clause_normalized: str,
+    clause_index: int,
+) -> None:
+    generic_query = _extract_generic_search_query(clause_text, clause_normalized, state.catalog)
+    if not generic_query:
+        return
+    search_steps, launched = _build_platform_search_steps(
+        platform="google",
+        query=generic_query,
+        wants_play=False,
+        browser_commands=state.browser_commands,
+        launch_browser=bool(state.browser_hint and not state.browser_opened),
+        use_address_bar_navigation=bool(state.browser_session_ready),
+        catalog=state.catalog,
+    )
+    state.steps.extend(search_steps)
+    state.preview_actions.append(
+        {
+            "clause_index": clause_index,
+            "action": "generic_search",
+            "platform": "google",
+            "query": generic_query,
+        }
+    )
+    if launched:
+        state.browser_opened = True
+        state.browser_session_ready = True
+    else:
+        state.browser_opened = True
+
+
+def _handle_type_or_diary(
+    state: GenericPlannerState,
+    clause_text: str,
+    clause_normalized: str,
+    clause_index: int,
+) -> None:
+    typed_text = _extract_type_text(clause_text, clause_normalized)
+    if typed_text:
+        state.steps.append(
+            {
+                "task_type": "desktop_action",
+                "title": "Type requested text",
+                "payload": {"action": "type_text", "text": typed_text, "delay_ms": 10},
+                "continue_on_failure": True,
+            }
+        )
+        state.preview_actions.append(
+            {"clause_index": clause_index, "action": "type_text", "text_excerpt": typed_text[:80]}
+        )
+        return
+
+    diary_text = _extract_diary_text_template(clause_text, clause_normalized)
+    if diary_text:
+        state.steps.append(
+            {
+                "task_type": "desktop_action",
+                "title": "Write diary template",
+                "payload": {"action": "type_text", "text": diary_text, "delay_ms": 12},
+                "continue_on_failure": True,
+            }
+        )
+        state.preview_actions.append(
+            {
+                "clause_index": clause_index,
+                "action": "write_diary_template",
+                "text_excerpt": diary_text[:80],
+            }
+        )
+
+
+def _handle_hotkey(
+    state: GenericPlannerState,
+    clause_text: str,
+    clause_normalized: str,
+    clause_index: int,
+) -> None:
+    hotkey = _extract_hotkey(clause_text, clause_normalized)
+    if not hotkey:
+        return
+    state.steps.append(
+        {
+            "task_type": "desktop_action",
+            "title": "Press requested hotkey",
+            "payload": {"action": "hotkey", "keys": hotkey},
+            "continue_on_failure": True,
+        }
+    )
+    state.preview_actions.append({"clause_index": clause_index, "action": "hotkey", "keys": hotkey})
+
+
+def _handle_wait_seconds(
+    state: GenericPlannerState,
+    clause_text: str,
+    clause_normalized: str,
+    clause_index: int,
+) -> None:
+    wait_seconds = _extract_wait_seconds(clause_text, clause_normalized)
+    if wait_seconds is None:
+        return
+    state.steps.append(
+        {
+            "task_type": "desktop_action",
+            "title": f"Wait {wait_seconds:.2f}s",
+            "payload": {"action": "wait", "seconds": wait_seconds},
+            "continue_on_failure": True,
+        }
+    )
+    state.preview_actions.append({"clause_index": clause_index, "action": "wait", "seconds": wait_seconds})
 
 
 def _extract_music_topic(prompt: str, normalized: str) -> str:
@@ -435,16 +524,20 @@ def _split_prompt_into_clauses(prompt: str) -> list[str]:
     return parts if parts else [text]
 
 
-def _prompt_mentions_browser(normalized: str) -> bool:
+def _prompt_mentions_browser(normalized: str, catalog: PromptCatalog) -> bool:
     if "browser" in normalized or "ブラウザ" in normalized:
         return True
-    for hints, _commands in BROWSER_HINTS:
-        if any(hint in normalized for hint in hints):
+    for alias in catalog.browser_aliases:
+        if alias and alias in normalized:
             return True
     return False
 
 
-def _extract_open_app_request(clause_text: str, clause_normalized: str) -> tuple[str, bool] | None:
+def _extract_open_app_request(
+    clause_text: str,
+    clause_normalized: str,
+    catalog: PromptCatalog,
+) -> tuple[str, bool] | None:
     if not any(keyword in clause_normalized for keyword in OPEN_HINT_KEYWORDS):
         return None
 
@@ -456,7 +549,7 @@ def _extract_open_app_request(clause_text: str, clause_normalized: str) -> tuple
     if english:
         app_name = _sanitize_app_name(str(english.group("app")))
         if app_name:
-            return app_name, _looks_like_browser_app(app_name)
+            return app_name, _looks_like_browser_app(app_name, catalog)
 
     japanese = re.search(
         r"(?P<app>.+?)(?:を)?(?:開いて|ひらいて|開く|起動して|起動|立ち上げて|立ち上げる)",
@@ -466,7 +559,7 @@ def _extract_open_app_request(clause_text: str, clause_normalized: str) -> tuple
     if japanese:
         app_name = _sanitize_app_name(str(japanese.group("app")))
         if app_name:
-            return app_name, _looks_like_browser_app(app_name)
+            return app_name, _looks_like_browser_app(app_name, catalog)
 
     if "browser" in clause_normalized or "ブラウザ" in clause_text:
         return "browser", True
@@ -487,16 +580,14 @@ def _sanitize_app_name(value: str) -> str:
     return cleaned
 
 
-def _looks_like_browser_app(app_name: str) -> bool:
+def _looks_like_browser_app(app_name: str, catalog: PromptCatalog) -> bool:
     normalized = _normalize_prompt(app_name)
     if not normalized:
         return False
     if "browser" in normalized or "ブラウザ" in app_name:
         return True
-    for hints, _commands in BROWSER_HINTS:
-        if any(hint in normalized for hint in hints):
-            return True
-    return False
+    _resolved, is_browser = catalog.resolve_app(app_name)
+    return is_browser
 
 
 def _extract_urls(clause_text: str) -> list[str]:
@@ -506,15 +597,25 @@ def _extract_urls(clause_text: str) -> list[str]:
 def _extract_platform_search_request(
     clause_text: str,
     clause_normalized: str,
+    catalog: PromptCatalog,
 ) -> tuple[str, str, bool] | None:
+    alias_tokens = sorted(
+        {alias for aliases in catalog.platform_aliases.values() for alias in aliases if alias},
+        key=len,
+        reverse=True,
+    )
+    platform_pattern = "|".join(re.escape(token) for token in alias_tokens)
+    if not platform_pattern:
+        platform_pattern = "youtube|google|github|wikipedia|bing"
+
     english = re.search(
-        r"(?:search|find|look up|play)\s+(?P<query>.+?)\s+(?:on|in)\s+"
-        r"(?P<platform>youtube|google|github|wikipedia|bing)",
+        rf"(?:search|find|look up|play)\s+(?P<query>.+?)\s+(?:on|in)\s+"
+        rf"(?P<platform>{platform_pattern})",
         clause_normalized,
         flags=re.IGNORECASE,
     )
     if english:
-        platform = _canonical_platform(str(english.group("platform")))
+        platform = _canonical_platform(str(english.group("platform")), catalog)
         query = _sanitize_topic_phrase(str(english.group("query")))
         wants_play = "play" in clause_normalized or (
             platform == "youtube" and any(keyword in clause_normalized for keyword in PLAY_KEYWORDS)
@@ -524,12 +625,12 @@ def _extract_platform_search_request(
 
     jp_patterns = [
         re.compile(
-            r"(?P<query>.+?)を(?P<platform>youtube|ユーチューブ|ようつべ|google|グーグル|github|ギットハブ|wikipedia|ウィキペディア|bing|ビング)"
+            rf"(?P<query>.+?)を(?P<platform>{platform_pattern})"
             r"(?:で)?(?P<verb>検索|探して|調べて|再生|流して|再生して|見つけて)?",
             flags=re.IGNORECASE,
         ),
         re.compile(
-            r"(?P<platform>youtube|ユーチューブ|ようつべ|google|グーグル|github|ギットハブ|wikipedia|ウィキペディア|bing|ビング)"
+            rf"(?P<platform>{platform_pattern})"
             r"(?:で)(?P<query>.+?)(?P<verb>検索|探して|調べて|再生|流して|再生して|見つけて)",
             flags=re.IGNORECASE,
         ),
@@ -538,7 +639,7 @@ def _extract_platform_search_request(
         matched = pattern.search(clause_text)
         if not matched:
             continue
-        platform = _canonical_platform(str(matched.group("platform")))
+        platform = _canonical_platform(str(matched.group("platform")), catalog)
         query = _sanitize_topic_phrase(str(matched.group("query")))
         verb = str(matched.groupdict().get("verb", ""))
         wants_play = bool(
@@ -548,7 +649,7 @@ def _extract_platform_search_request(
         if platform and query:
             return platform, query, wants_play
 
-    for platform, aliases in PLATFORM_ALIASES.items():
+    for platform, aliases in catalog.platform_aliases.items():
         if not any(alias in clause_normalized for alias in aliases):
             continue
         if platform == "youtube" and any(keyword in clause_normalized for keyword in PLAY_KEYWORDS):
@@ -558,8 +659,12 @@ def _extract_platform_search_request(
     return None
 
 
-def _extract_generic_search_query(clause_text: str, clause_normalized: str) -> str | None:
-    if any(alias in clause_normalized for aliases in PLATFORM_ALIASES.values() for alias in aliases):
+def _extract_generic_search_query(
+    clause_text: str,
+    clause_normalized: str,
+    catalog: PromptCatalog,
+) -> str | None:
+    if any(alias in clause_normalized for alias in catalog.platform_alias_tokens()):
         return None
     if not any(keyword in clause_normalized for keyword in SEARCH_HINT_KEYWORDS):
         return None
@@ -673,16 +778,15 @@ def _extract_wait_seconds(clause_text: str, clause_normalized: str) -> float | N
     return None
 
 
-def _canonical_platform(value: str) -> str | None:
-    normalized = value.strip().lower()
-    for platform, aliases in PLATFORM_ALIASES.items():
-        if normalized in aliases:
-            return platform
-    return None
+def _canonical_platform(value: str, catalog: PromptCatalog) -> str | None:
+    return catalog.canonical_platform(value)
 
 
-def _build_platform_search_url(platform: str, query: str) -> str:
-    template = PLATFORM_SEARCH_URL_TEMPLATES.get(platform, PLATFORM_SEARCH_URL_TEMPLATES["google"])
+def _build_platform_search_url(platform: str, query: str, catalog: PromptCatalog) -> str:
+    template = catalog.platform_url_templates.get(
+        platform,
+        catalog.platform_url_templates.get("google", "https://www.google.com/search?q={query}"),
+    )
     encoded_query = quote_plus(query.strip() or "recommended")
     return template.format(query=encoded_query)
 
@@ -704,8 +808,9 @@ def _build_platform_search_steps(
     browser_commands: list[str],
     launch_browser: bool,
     use_address_bar_navigation: bool,
+    catalog: PromptCatalog,
 ) -> tuple[list[dict[str, Any]], bool]:
-    search_url = _build_platform_search_url(platform, query)
+    search_url = _build_platform_search_url(platform, query, catalog)
     steps: list[dict[str, Any]] = []
     launched = False
 
@@ -787,11 +892,8 @@ def _build_platform_search_steps(
     return steps, launched
 
 
-def _browser_launch_candidates(normalized: str) -> list[str]:
-    for hints, commands in BROWSER_HINTS:
-        if any(hint in normalized for hint in hints):
-            return list(commands)
-    return ["google-chrome", "chromium-browser", "chromium"]
+def _browser_launch_candidates(normalized: str, catalog: PromptCatalog) -> list[str]:
+    return catalog.browser_commands_for_prompt(normalized)
 
 
 def _build_browser_launch_steps(url: str, commands: list[str]) -> tuple[dict[str, Any], list[dict[str, Any]]]:

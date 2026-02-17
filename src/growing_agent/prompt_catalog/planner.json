@@ -1,0 +1,16 @@
+{
+  "handler_order": [
+    "open_app",
+    "open_url",
+    "platform_search",
+    "generic_search",
+    "type_or_diary",
+    "hotkey",
+    "wait_seconds"
+  ],
+  "default_browser_commands": [
+    "google-chrome",
+    "chromium-browser",
+    "chromium"
+  ]
+}

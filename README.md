@@ -239,9 +239,40 @@ python3 -m growing_agent run-prompt --prompt "open Firefox and search python asy
 python3 -m growing_agent run-prompt --prompt "type \"hello world\" and press Enter" --dry-run
 python3 -m growing_agent run-prompt --prompt "open notepad and write today's diary" --dry-run
 
+# Optional: load prompt catalog from a custom directory
+python3 -m growing_agent run-prompt --prompt "acme noteを開いて" --prompt-catalog-dir ./my-prompt-catalog --dry-run
+
+# Optional: add custom prompt handlers by plugin file/module/directory
+python3 -m growing_agent run-prompt --prompt "plugin workflow please" --prompt-plugin ./plugins --dry-run
+
 # Reset state file
 python3 -m growing_agent reset
 ```
+
+## Extensibility architecture (config + registry + plugin)
+
+- `src/growing_agent/prompt_catalog/*.json`
+  - `apps.json`: app aliases and browser metadata
+  - `platforms.json`: platform aliases and search URL templates
+  - `workflows.json`: reusable mission-step templates
+  - `planner.json`: handler order and defaults
+- `PromptHandlerRegistry` (`src/growing_agent/prompt_registry.py`)
+  - Runtime-pluggable handler registry for clause parsers
+- `load_prompt_plugins(...)`
+  - Loads `register_prompt_handlers(registry)` from plugin modules/files
+- Runtime interface (`src/growing_agent/prompt_runtime.py`)
+  - Same interface for `MockRuntimeAdapter` and `AutonomousWorkerRuntimeAdapter`
+
+### Additions with minimal diff
+
+1. **Settings-only extension** (no code change):
+   - Add one app entry to `apps.json` (or custom catalog dir).
+   - Example: add aliases for `AcmeNote`.
+
+2. **One-file plugin extension**:
+   - Add `plugins/my_handler.py` with:
+     - `register_prompt_handlers(registry)`
+     - register one handler function that appends steps to planning state.
 
 ## Docker quick start
 

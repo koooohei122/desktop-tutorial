@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from datetime import date
+import json
+from pathlib import Path
+import tempfile
 import unittest
 
 from growing_agent.prompt_planner import plan_prompt_task
@@ -89,6 +92,68 @@ class TestPromptPlanner(unittest.TestCase):
         diary_text = type_steps[-1]["payload"]["text"]
         self.assertIn("日記", diary_text)
         self.assertIn(date.today().isoformat(), diary_text)
+
+    def test_plan_open_app_with_custom_catalog_settings_only(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            catalog_dir = Path(tmpdir)
+            (catalog_dir / "apps.json").write_text(
+                json.dumps(
+                    {
+                        "apps": [
+                            {
+                                "canonical": "AcmeNote",
+                                "aliases": ["acme note", "acmenote"],
+                                "is_browser": False,
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            planned = plan_prompt_task(
+                prompt="acme noteを開いて",
+                priority=8,
+                catalog_dir=str(catalog_dir),
+            )
+            steps = planned["payload"]["steps"]
+            self.assertTrue(steps)
+            self.assertEqual(steps[0]["payload"]["action"], "launch_app")
+            self.assertEqual(steps[0]["payload"]["app_name"], "AcmeNote")
+
+    def test_plan_with_plugin_file_adds_new_handler(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            plugin_file = Path(tmpdir) / "plugin_wait.py"
+            plugin_file.write_text(
+                (
+                    "def register_prompt_handlers(registry):\n"
+                    "    def plugin_wait_handler(state, clause_text, clause_normalized, clause_index):\n"
+                    "        if 'plugin' not in clause_normalized:\n"
+                    "            return\n"
+                    "        state.steps.append({\n"
+                    "            'task_type': 'desktop_action',\n"
+                    "            'title': 'Plugin wait',\n"
+                    "            'payload': {'action': 'wait', 'seconds': 0.2},\n"
+                    "            'continue_on_failure': True,\n"
+                    "        })\n"
+                    "        state.preview_actions.append({\n"
+                    "            'clause_index': clause_index,\n"
+                    "            'action': 'plugin_wait',\n"
+                    "        })\n"
+                    "    registry.register('plugin_wait', plugin_wait_handler)\n"
+                ),
+                encoding="utf-8",
+            )
+
+            planned = plan_prompt_task(
+                prompt="plugin workflow please",
+                priority=5,
+                plugin_paths=[str(plugin_file)],
+            )
+            steps = planned["payload"]["steps"]
+            self.assertTrue(steps)
+            self.assertEqual(steps[0]["payload"]["action"], "wait")
+            actions = planned["preview"]["actions"]
+            self.assertEqual(actions[0]["action"], "plugin_wait")
 
 
 if __name__ == "__main__":

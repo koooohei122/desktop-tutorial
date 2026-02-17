@@ -161,6 +161,51 @@ class TestAutonomyWorker(unittest.TestCase):
             self.assertIn("game", fun)
             self.assertGreaterEqual(int(fun["game"]["xp"]), 1)
 
+    def test_desktop_action_wait_and_mission(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+            memory = MemoryStore(state_path)
+            runner = CommandRunner(
+                allowed_commands={"echo", "xdotool", "python3"},
+                log_path=log_path,
+            )
+            worker = AutonomousWorker(
+                memory=memory,
+                runner=runner,
+                language="en",
+                workspace_root=tmpdir,
+            )
+
+            worker.enqueue(
+                task_type="desktop_action",
+                title="wait a bit",
+                payload={"action": "wait", "seconds": 0.01},
+                priority=5,
+            )
+            worker.enqueue(
+                task_type="mission",
+                title="mixed mission",
+                payload={
+                    "max_step_failures": 0,
+                    "steps": [
+                        {"task_type": "desktop_action", "payload": {"action": "wait", "seconds": 0.01}},
+                        {"task_type": "command", "payload": {"command": ["echo", "ok"]}},
+                    ],
+                },
+                priority=6,
+            )
+
+            result = worker.run(cycles=2, dry_run=True)
+            self.assertEqual(result["summary"]["executed_count"], 2)
+            task_types = [item["task_type"] for item in result["executed"]]
+            self.assertIn("desktop_action", task_types)
+            self.assertIn("mission", task_types)
+
+            mission_result = next(item for item in result["executed"] if item["task_type"] == "mission")
+            self.assertTrue(mission_result["success"])
+            self.assertEqual(mission_result["details"]["total_steps"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

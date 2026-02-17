@@ -63,6 +63,24 @@ python3 -m growing_agent run-autonomy --cycles 3 --dry-run --language en
 python3 -m growing_agent fun-status --language en
 ```
 
+## PC autonomy commands (OpenClaw-style building blocks)
+
+You can queue GUI-like actions and multi-step missions:
+
+```bash
+# Queue a desktop typing action
+python3 -m growing_agent enqueue-desktop-action --action type_text --text "hello world"
+
+# Queue a desktop hotkey action
+python3 -m growing_agent enqueue-desktop-action --action hotkey --keys ctrl l
+
+# Queue a mission with multiple steps
+python3 -m growing_agent enqueue-mission --title "quick desktop mission" --steps-json '[{"task_type":"desktop_action","payload":{"action":"wait","seconds":0.2}},{"task_type":"command","payload":{"command":["echo","mission-ok"]}}]'
+
+# Execute until queue is empty (bounded by max-cycles)
+python3 -m growing_agent run-autonomy --until-empty --max-cycles 50 --dry-run
+```
+
 ## Launch-ready additions
 
 - MIT license (`LICENSE`)
@@ -139,6 +157,9 @@ python3 -m growing_agent enqueue-task --task-type write_note --title "daily memo
 # Run autonomy queue with learning updates
 python3 -m growing_agent run-autonomy --cycles 3 --dry-run
 
+# Run until queue is drained (bounded safety cap)
+python3 -m growing_agent run-autonomy --until-empty --max-cycles 50 --dry-run
+
 # Inspect autonomy queue/learning state
 python3 -m growing_agent autonomy-status
 
@@ -147,6 +168,12 @@ python3 -m growing_agent spawn-challenges --count 3
 
 # Inspect XP/level/badges
 python3 -m growing_agent fun-status
+
+# Queue desktop action
+python3 -m growing_agent enqueue-desktop-action --action wait --seconds 0.5
+
+# Queue mission task
+python3 -m growing_agent enqueue-mission --title "mission 1" --steps-json '[{"task_type":"write_note","payload":{"path":"data/autonomy/notes.md","text":"hello"}}]'
 
 # Reset state file
 python3 -m growing_agent reset

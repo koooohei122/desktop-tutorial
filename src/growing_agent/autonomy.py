@@ -3,15 +3,31 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, timezone
 import json
 from pathlib import Path
+import time
 from typing import Any
+from urllib.parse import urlparse
 import uuid
 
 from .i18n import DEFAULT_LANGUAGE, normalize_language
 from .memory import MemoryStore
 from .tools.runner import CommandRunner
 
-SUPPORTED_AUTONOMY_TASKS = ("command", "write_note", "analyze_state")
-DEFAULT_AUTONOMY_ALLOWED_COMMANDS = ("python3", "python", "pytest", "echo")
+SUPPORTED_AUTONOMY_TASKS = (
+    "command",
+    "write_note",
+    "analyze_state",
+    "desktop_action",
+    "mission",
+)
+DEFAULT_AUTONOMY_ALLOWED_COMMANDS = (
+    "python3",
+    "python",
+    "pytest",
+    "echo",
+    "xdotool",
+    "scrot",
+    "xdg-open",
+)
 LEVEL_XP_STEP = 100
 
 FUN_TITLES: tuple[tuple[int, str], ...] = (
@@ -200,7 +216,7 @@ class AutonomousWorker:
             if task is None:
                 break
 
-            result = self._execute_task(task, state, dry_run=dry_run)
+            result = self._execute_task(task, state, dry_run=dry_run, depth=0)
             self._update_learning(autonomy, task, result)
             self._record_completion(autonomy, task, result)
             game_event = self._update_game_progress(autonomy, task, result)
@@ -406,7 +422,17 @@ class AutonomousWorker:
         task: dict[str, Any],
         state: dict[str, Any],
         dry_run: bool,
+        depth: int = 0,
     ) -> dict[str, Any]:
+        if depth > 3:
+            return self._build_result(
+                task=task,
+                success=False,
+                reward=0.0,
+                summary="Task nesting depth exceeded the safety limit.",
+                details={},
+            )
+
         task_type = str(task.get("task_type", ""))
         if task_type == "command":
             return self._execute_command_task(task, dry_run=dry_run)
@@ -414,6 +440,10 @@ class AutonomousWorker:
             return self._execute_write_note_task(task, dry_run=dry_run)
         if task_type == "analyze_state":
             return self._execute_analyze_state_task(task, state=state, dry_run=dry_run)
+        if task_type == "desktop_action":
+            return self._execute_desktop_action_task(task, dry_run=dry_run)
+        if task_type == "mission":
+            return self._execute_mission_task(task, state=state, dry_run=dry_run, depth=depth)
 
         return self._build_result(
             task=task,
@@ -598,6 +628,322 @@ class AutonomousWorker:
             reward=reward,
             summary="analyze_state task completed.",
             details={"path": str(target_path), "report": report, "dry_run": dry_run},
+        )
+
+    def _execute_desktop_action_task(self, task: dict[str, Any], dry_run: bool) -> dict[str, Any]:
+        payload = task.get("payload", {})
+        if not isinstance(payload, dict):
+            payload = {}
+
+        action = str(payload.get("action", "")).strip().lower()
+        if not action:
+            return self._build_result(
+                task=task,
+                success=False,
+                reward=0.0,
+                summary="desktop_action requires an action field.",
+                details={},
+            )
+
+        if action == "wait":
+            raw_seconds = payload.get("seconds", 1.0)
+            try:
+                seconds = float(raw_seconds)
+            except (TypeError, ValueError):
+                seconds = -1.0
+            if seconds < 0:
+                return self._build_result(
+                    task=task,
+                    success=False,
+                    reward=0.0,
+                    summary="wait action requires seconds >= 0.",
+                    details={"seconds": raw_seconds},
+                )
+            capped = min(seconds, 30.0)
+            if not dry_run:
+                time.sleep(capped)
+            return self._build_result(
+                task=task,
+                success=True,
+                reward=0.7,
+                summary="Desktop wait action completed.",
+                details={"seconds": capped, "dry_run": dry_run},
+            )
+
+        command: list[str] | None = None
+        detail_target: str | None = None
+        if action == "hotkey":
+            raw_keys = payload.get("keys")
+            if isinstance(raw_keys, str):
+                keys = [raw_keys]
+            elif isinstance(raw_keys, list):
+                keys = [str(item) for item in raw_keys if str(item).strip()]
+            else:
+                keys = []
+            if not keys:
+                return self._build_result(
+                    task=task,
+                    success=False,
+                    reward=0.0,
+                    summary="hotkey action requires keys list.",
+                    details={},
+                )
+            command = ["xdotool", "key", "+".join(keys)]
+        elif action == "type_text":
+            text = payload.get("text")
+            if not isinstance(text, str) or not text:
+                return self._build_result(
+                    task=task,
+                    success=False,
+                    reward=0.0,
+                    summary="type_text action requires non-empty text.",
+                    details={},
+                )
+            raw_delay = payload.get("delay_ms", 12)
+            try:
+                delay_ms = max(0, int(raw_delay))
+            except (TypeError, ValueError):
+                delay_ms = 12
+            command = ["xdotool", "type", "--delay", str(delay_ms), text]
+        elif action == "click":
+            try:
+                x = int(payload.get("x"))
+                y = int(payload.get("y"))
+            except (TypeError, ValueError):
+                return self._build_result(
+                    task=task,
+                    success=False,
+                    reward=0.0,
+                    summary="click action requires integer x and y.",
+                    details={},
+                )
+            try:
+                button = int(payload.get("button", 1))
+            except (TypeError, ValueError):
+                button = 1
+            button = max(1, min(5, button))
+            command = ["xdotool", "mousemove", str(x), str(y), "click", str(button)]
+        elif action == "move":
+            try:
+                x = int(payload.get("x"))
+                y = int(payload.get("y"))
+            except (TypeError, ValueError):
+                return self._build_result(
+                    task=task,
+                    success=False,
+                    reward=0.0,
+                    summary="move action requires integer x and y.",
+                    details={},
+                )
+            command = ["xdotool", "mousemove", str(x), str(y)]
+        elif action == "screenshot":
+            raw_path = payload.get("path", "data/autonomy/screenshot.png")
+            try:
+                target = self._safe_data_path(raw_path)
+            except ValueError as error:
+                return self._build_result(
+                    task=task,
+                    success=False,
+                    reward=0.0,
+                    summary="screenshot path is invalid.",
+                    details={"error": str(error)},
+                )
+            detail_target = str(target)
+            if not dry_run:
+                target.parent.mkdir(parents=True, exist_ok=True)
+            command = ["scrot", str(target)]
+        elif action == "open_url":
+            url = payload.get("url")
+            if not isinstance(url, str) or not url.strip():
+                return self._build_result(
+                    task=task,
+                    success=False,
+                    reward=0.0,
+                    summary="open_url action requires a url string.",
+                    details={},
+                )
+            parsed = urlparse(url.strip())
+            if parsed.scheme not in {"http", "https", "file"}:
+                return self._build_result(
+                    task=task,
+                    success=False,
+                    reward=0.0,
+                    summary="open_url only supports http/https/file schemes.",
+                    details={"url": url},
+                )
+            command = ["xdg-open", url.strip()]
+            detail_target = url.strip()
+        else:
+            return self._build_result(
+                task=task,
+                success=False,
+                reward=0.0,
+                summary=f"Unsupported desktop action: {action}",
+                details={"action": action},
+            )
+
+        if command is None:
+            return self._build_result(
+                task=task,
+                success=False,
+                reward=0.0,
+                summary="desktop_action could not resolve command.",
+                details={"action": action},
+            )
+
+        run_result = self.runner.run(command, dry_run=dry_run, timeout_seconds=30.0)
+        success = bool(run_result.allowed and run_result.returncode == 0 and not run_result.timed_out)
+        reward = 1.0 if success else 0.0
+        summary = f"Desktop action '{action}' succeeded." if success else f"Desktop action '{action}' failed."
+        details = {
+            "action": action,
+            "target": detail_target,
+            "command": run_result.command,
+            "returncode": run_result.returncode,
+            "allowed": run_result.allowed,
+            "timed_out": run_result.timed_out,
+            "duration_seconds": run_result.duration_seconds,
+            "stdout_excerpt": run_result.stdout.strip()[:500],
+            "stderr_excerpt": run_result.stderr.strip()[:500],
+        }
+        return self._build_result(
+            task=task,
+            success=success,
+            reward=reward,
+            summary=summary,
+            details=details,
+        )
+
+    def _execute_mission_task(
+        self,
+        task: dict[str, Any],
+        state: dict[str, Any],
+        dry_run: bool,
+        depth: int,
+    ) -> dict[str, Any]:
+        payload = task.get("payload", {})
+        if not isinstance(payload, dict):
+            payload = {}
+
+        raw_steps = payload.get("steps")
+        if not isinstance(raw_steps, list) or not raw_steps:
+            return self._build_result(
+                task=task,
+                success=False,
+                reward=0.0,
+                summary="mission task requires a non-empty steps list.",
+                details={},
+            )
+
+        raw_max_failures = payload.get("max_step_failures", 0)
+        try:
+            max_step_failures = max(0, int(raw_max_failures))
+        except (TypeError, ValueError):
+            max_step_failures = 0
+
+        step_results: list[dict[str, Any]] = []
+        failure_count = 0
+        hard_stop = False
+        for idx, step in enumerate(raw_steps, start=1):
+            if not isinstance(step, dict):
+                failure_count += 1
+                step_results.append(
+                    {
+                        "step_index": idx,
+                        "success": False,
+                        "summary": "Invalid step payload; expected object.",
+                    }
+                )
+                if failure_count > max_step_failures:
+                    hard_stop = True
+                    break
+                continue
+
+            step_task_type = str(step.get("task_type", "")).strip()
+            if step_task_type not in SUPPORTED_AUTONOMY_TASKS or step_task_type == "mission":
+                failure_count += 1
+                step_results.append(
+                    {
+                        "step_index": idx,
+                        "success": False,
+                        "summary": f"Unsupported mission step task_type: {step_task_type}",
+                    }
+                )
+                if failure_count > max_step_failures:
+                    hard_stop = True
+                    break
+                continue
+
+            step_title_raw = step.get("title")
+            if isinstance(step_title_raw, str) and step_title_raw.strip():
+                step_title = step_title_raw.strip()
+            else:
+                step_title = f"{task.get('title', 'mission')} :: step {idx}"
+
+            step_payload = step.get("payload", {})
+            if not isinstance(step_payload, dict):
+                step_payload = {}
+
+            raw_step_priority = step.get("priority", task.get("priority", 5))
+            try:
+                step_priority = max(1, min(10, int(raw_step_priority)))
+            except (TypeError, ValueError):
+                step_priority = 5
+
+            step_task = {
+                "task_id": f"{task.get('task_id', 'mission')}:step:{idx}",
+                "task_type": step_task_type,
+                "title": step_title,
+                "payload": step_payload,
+                "priority": step_priority,
+                "attempts": 0,
+                "created_at_utc": _utcnow(),
+                "from_mission": str(task.get("task_id", "")),
+            }
+            step_result = self._execute_task(step_task, state, dry_run=dry_run, depth=depth + 1)
+            step_result["step_index"] = idx
+            step_results.append(step_result)
+
+            step_success = bool(step_result.get("success") is True)
+            continue_on_failure = bool(step.get("continue_on_failure", False))
+            if not step_success:
+                failure_count += 1
+                if not continue_on_failure or failure_count > max_step_failures:
+                    hard_stop = True
+                    break
+
+        executed_steps = len(step_results)
+        total_steps = len(raw_steps)
+        completed_all = executed_steps == total_steps and not hard_stop
+        success = completed_all and failure_count <= max_step_failures
+
+        reward = 0.0
+        if step_results:
+            reward = sum(float(item.get("reward", 0.0)) for item in step_results) / len(step_results)
+            if success:
+                reward = min(1.0, reward + 0.1)
+        reward = round(max(0.0, reward), 3)
+
+        summary = (
+            "Mission completed successfully."
+            if success
+            else f"Mission finished with {failure_count} failed step(s)."
+        )
+        details = {
+            "executed_steps": executed_steps,
+            "total_steps": total_steps,
+            "failure_count": failure_count,
+            "max_step_failures": max_step_failures,
+            "completed_all_steps": completed_all,
+            "dry_run": dry_run,
+            "step_results": step_results,
+        }
+        return self._build_result(
+            task=task,
+            success=success,
+            reward=reward,
+            summary=summary,
+            details=details,
         )
 
     def _build_result(
@@ -822,6 +1168,8 @@ class AutonomousWorker:
             "command": "Verify allowlist, executable path, and command arguments.",
             "write_note": "Ensure target path is under data/ and text is non-empty.",
             "analyze_state": "Verify report output path and state structure.",
+            "desktop_action": "Check desktop backend tools and action payload fields.",
+            "mission": "Inspect failed steps and retry with continue_on_failure where needed.",
         }.get(task_type, "Review task payload and executor support.")
 
         details = result.get("details", {})

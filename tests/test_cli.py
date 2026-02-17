@@ -421,6 +421,69 @@ class TestCli(unittest.TestCase):
             self.assertEqual(fun_payload["message"], "Loaded fun progression status.")
             self.assertIn("game", fun_payload["fun"])
 
+    def test_enqueue_desktop_action_and_mission_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+
+            desktop = self.run_cli(
+                [
+                    "enqueue-desktop-action",
+                    "--action",
+                    "wait",
+                    "--seconds",
+                    "0.01",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                    "--language",
+                    "en",
+                ]
+            )
+            self.assertEqual(desktop.returncode, 0, msg=desktop.stderr)
+            desktop_payload = json.loads(desktop.stdout)
+            self.assertEqual(desktop_payload["task"]["task_type"], "desktop_action")
+
+            mission = self.run_cli(
+                [
+                    "enqueue-mission",
+                    "--title",
+                    "test mission",
+                    "--steps-json",
+                    '[{"task_type":"desktop_action","payload":{"action":"wait","seconds":0.01}},{"task_type":"command","payload":{"command":["echo","ok"]}}]',
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                    "--language",
+                    "en",
+                ]
+            )
+            self.assertEqual(mission.returncode, 0, msg=mission.stderr)
+            mission_payload = json.loads(mission.stdout)
+            self.assertEqual(mission_payload["task"]["task_type"], "mission")
+
+            run = self.run_cli(
+                [
+                    "run-autonomy",
+                    "--until-empty",
+                    "--max-cycles",
+                    "10",
+                    "--dry-run",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                    "--language",
+                    "en",
+                ]
+            )
+            self.assertEqual(run.returncode, 0, msg=run.stderr)
+            run_payload = json.loads(run.stdout)
+            self.assertEqual(run_payload["summary"]["queue_size"], 0)
+            self.assertGreaterEqual(run_payload["summary"]["executed_count"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

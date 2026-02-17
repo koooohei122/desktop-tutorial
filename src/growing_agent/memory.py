@@ -217,21 +217,41 @@ class MemoryStore:
         if not isinstance(active_raw, list):
             active_raw = []
         active_challenges = [item for item in active_raw if isinstance(item, dict)]
+
+        def safe_non_negative_int(value: Any, fallback: int) -> int:
+            try:
+                parsed = int(value)
+            except (TypeError, ValueError):
+                parsed = fallback
+            return max(0, parsed)
+
         game = {
             **default_game,
             **game_raw,
-            "xp": max(0, int(game_raw.get("xp", default_game["xp"]))),
-            "level": max(1, int(game_raw.get("level", default_game["level"]))),
+            "xp": safe_non_negative_int(game_raw.get("xp", default_game["xp"]), int(default_game["xp"])),
+            "level": max(
+                1,
+                safe_non_negative_int(
+                    game_raw.get("level", default_game["level"]),
+                    int(default_game["level"]),
+                ),
+            ),
             "title": str(game_raw.get("title", default_game["title"])),
-            "streak_days": max(0, int(game_raw.get("streak_days", default_game["streak_days"]))),
-            "current_success_streak": max(
-                0, int(game_raw.get("current_success_streak", default_game["current_success_streak"]))
+            "streak_days": safe_non_negative_int(
+                game_raw.get("streak_days", default_game["streak_days"]),
+                int(default_game["streak_days"]),
             ),
-            "best_success_streak": max(
-                0, int(game_raw.get("best_success_streak", default_game["best_success_streak"]))
+            "current_success_streak": safe_non_negative_int(
+                game_raw.get("current_success_streak", default_game["current_success_streak"]),
+                int(default_game["current_success_streak"]),
             ),
-            "completed_challenges": max(
-                0, int(game_raw.get("completed_challenges", default_game["completed_challenges"]))
+            "best_success_streak": safe_non_negative_int(
+                game_raw.get("best_success_streak", default_game["best_success_streak"]),
+                int(default_game["best_success_streak"]),
+            ),
+            "completed_challenges": safe_non_negative_int(
+                game_raw.get("completed_challenges", default_game["completed_challenges"]),
+                int(default_game["completed_challenges"]),
             ),
             "badges": badges,
             "active_challenges": active_challenges,

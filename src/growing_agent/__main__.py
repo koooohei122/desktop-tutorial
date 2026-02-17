@@ -46,6 +46,49 @@ def parse_payload_json(value: str) -> dict[str, Any]:
     return payload
 
 
+def parse_steps_json(value: str) -> list[dict[str, Any]]:
+    try:
+        steps = json.loads(value)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"steps-json must be valid JSON: {error.msg}") from error
+    if not isinstance(steps, list):
+        raise ValueError("steps-json must be a JSON array")
+    normalized = [item for item in steps if isinstance(item, dict)]
+    if len(normalized) != len(steps):
+        raise ValueError("each step in steps-json must be a JSON object")
+    return normalized
+
+
+def build_desktop_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
+    payload: dict[str, Any] = {"action": args.action}
+    if args.action in {"click", "move"}:
+        if args.x is None or args.y is None:
+            raise ValueError("click/move actions require --x and --y")
+        payload["x"] = int(args.x)
+        payload["y"] = int(args.y)
+        if args.action == "click":
+            payload["button"] = int(args.button)
+    elif args.action == "type_text":
+        if args.text is None:
+            raise ValueError("type_text action requires --text")
+        payload["text"] = str(args.text)
+    elif args.action == "hotkey":
+        if not args.keys:
+            raise ValueError("hotkey action requires --keys")
+        payload["keys"] = [str(item) for item in args.keys]
+    elif args.action == "wait":
+        if args.seconds is None:
+            raise ValueError("wait action requires --seconds")
+        payload["seconds"] = float(args.seconds)
+    elif args.action == "screenshot":
+        payload["path"] = str(args.path) if args.path else "data/autonomy/screenshot.png"
+    elif args.action == "open_url":
+        if args.url is None:
+            raise ValueError("open_url action requires --url")
+        payload["url"] = str(args.url)
+    return payload
+
+
 def build_fun_moment(summary: dict[str, Any], language: str) -> str:
     level_ups = int(summary.get("level_ups", 0))
     new_badges = summary.get("new_badges", [])
@@ -126,6 +169,45 @@ def build_parser() -> argparse.ArgumentParser:
     )
     add_language_argument(enqueue_task_parser)
 
+    enqueue_desktop_parser = subparsers.add_parser(
+        "enqueue-desktop-action",
+        help="Queue a desktop action task (click/type/hotkey/wait/screenshot/open_url).",
+    )
+    enqueue_desktop_parser.add_argument("--state-path", default="data/state.json")
+    enqueue_desktop_parser.add_argument("--log-path", default="data/runner.log")
+    enqueue_desktop_parser.add_argument(
+        "--action",
+        choices=("hotkey", "type_text", "click", "move", "wait", "screenshot", "open_url"),
+        required=True,
+    )
+    enqueue_desktop_parser.add_argument("--title", default="Desktop action")
+    enqueue_desktop_parser.add_argument("--priority", type=int, default=6)
+    enqueue_desktop_parser.add_argument("--x", type=int)
+    enqueue_desktop_parser.add_argument("--y", type=int)
+    enqueue_desktop_parser.add_argument("--button", type=int, default=1)
+    enqueue_desktop_parser.add_argument("--text")
+    enqueue_desktop_parser.add_argument("--keys", nargs="+")
+    enqueue_desktop_parser.add_argument("--seconds", type=float)
+    enqueue_desktop_parser.add_argument("--path")
+    enqueue_desktop_parser.add_argument("--url")
+    add_language_argument(enqueue_desktop_parser)
+
+    enqueue_mission_parser = subparsers.add_parser(
+        "enqueue-mission",
+        help="Queue a multi-step mission task.",
+    )
+    enqueue_mission_parser.add_argument("--state-path", default="data/state.json")
+    enqueue_mission_parser.add_argument("--log-path", default="data/runner.log")
+    enqueue_mission_parser.add_argument("--title", required=True)
+    enqueue_mission_parser.add_argument("--priority", type=int, default=7)
+    enqueue_mission_parser.add_argument("--max-step-failures", type=int, default=0)
+    enqueue_mission_parser.add_argument(
+        "--steps-json",
+        required=True,
+        help="JSON array of mission steps. Each step needs task_type and payload.",
+    )
+    add_language_argument(enqueue_mission_parser)
+
     run_autonomy_parser = subparsers.add_parser(
         "run-autonomy",
         help="Run queued autonomous tasks with learning updates.",
@@ -134,6 +216,13 @@ def build_parser() -> argparse.ArgumentParser:
     run_autonomy_parser.add_argument("--log-path", default="data/runner.log")
     run_autonomy_parser.add_argument("--cycles", type=int, default=3)
     run_autonomy_parser.add_argument("--dry-run", action="store_true")
+    run_autonomy_parser.add_argument("--until-empty", action="store_true")
+    run_autonomy_parser.add_argument(
+        "--max-cycles",
+        type=int,
+        default=50,
+        help="Safety cap when --until-empty is set.",
+    )
     run_autonomy_parser.add_argument(
         "--allow-command",
         action="append",
@@ -298,10 +387,60 @@ def main() -> int:
         print(json.dumps(response, indent=2, ensure_ascii=False))
         return 0
 
+    if args.subcommand == "enqueue-desktop-action":
+        worker = build_autonomous_worker_from_args(args)
+        try:
+            payload = build_desktop_payload_from_args(args)
+            task = worker.enqueue(
+                task_type="desktop_action",
+                title=args.title,
+                payload=payload,
+                priority=args.priority,
+            )
+        except ValueError as error:
+            parser.error(str(error))
+        language = worker.language
+        response = {
+            "task": task,
+            "display_language": language,
+            "message": translate("task_enqueued", language),
+        }
+        print(json.dumps(response, indent=2, ensure_ascii=False))
+        return 0
+
+    if args.subcommand == "enqueue-mission":
+        worker = build_autonomous_worker_from_args(args)
+        try:
+            steps = parse_steps_json(args.steps_json)
+            payload = {
+                "steps": steps,
+                "max_step_failures": args.max_step_failures,
+            }
+            task = worker.enqueue(
+                task_type="mission",
+                title=args.title,
+                payload=payload,
+                priority=args.priority,
+            )
+        except ValueError as error:
+            parser.error(str(error))
+        language = worker.language
+        response = {
+            "task": task,
+            "display_language": language,
+            "message": translate("task_enqueued", language),
+        }
+        print(json.dumps(response, indent=2, ensure_ascii=False))
+        return 0
+
     if args.subcommand == "run-autonomy":
         worker = build_autonomous_worker_from_args(args)
         try:
-            result = worker.run(cycles=args.cycles, dry_run=args.dry_run)
+            if args.until_empty:
+                cycles = max(1, int(args.max_cycles))
+            else:
+                cycles = args.cycles
+            result = worker.run(cycles=cycles, dry_run=args.dry_run)
         except ValueError as error:
             parser.error(str(error))
         state = result["state"]

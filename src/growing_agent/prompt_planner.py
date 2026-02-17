@@ -148,7 +148,8 @@ def _plan_youtube_music_request(prompt: str, normalized: str, priority: int) -> 
     }
 
     safe_priority = max(1, min(10, int(priority)))
-    title = f"Prompt mission: play YouTube '{query}'"
+    title_topic = topic.strip() or query
+    title = f"Prompt mission: play YouTube '{title_topic}'"
     return PromptPlan(
         intent="youtube_music_recommendation",
         task_type="mission",
@@ -168,7 +169,7 @@ def _extract_music_topic(prompt: str, normalized: str) -> str:
     original = prompt.strip()
     jp_match = re.search(r"(.+?)をyoutube", original, flags=re.IGNORECASE)
     if jp_match:
-        candidate = jp_match.group(1).strip(" \t,、。")
+        candidate = _sanitize_topic_phrase(jp_match.group(1))
         if candidate:
             return candidate
 
@@ -178,7 +179,7 @@ def _extract_music_topic(prompt: str, normalized: str) -> str:
         flags=re.IGNORECASE,
     )
     if en_match:
-        candidate = en_match.group(1).strip(" \t,.;:")
+        candidate = _sanitize_topic_phrase(en_match.group(1))
         if candidate:
             return candidate
 
@@ -196,6 +197,31 @@ def _build_youtube_query(topic: str, normalized: str) -> str:
     if "今日" in cleaned or "today" in normalized:
         return f"{cleaned} おすすめ 曲"
     return f"{cleaned} songs"
+
+
+def _sanitize_topic_phrase(value: str) -> str:
+    cleaned = value.strip(" \t,、。.!?;:")
+    if "、" in cleaned:
+        cleaned = cleaned.split("、")[-1].strip()
+    if "," in cleaned:
+        cleaned = cleaned.split(",")[-1].strip()
+
+    cleaned = re.sub(
+        r"^(?:open|launch|start)\s+(?:google\s*chrome|chrome|chromium|browser)\s*(?:and|then)?\s*",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(
+        r"^(?:google\s*chrome|chrome|chromium|microsoft\s*edge|edge)\s*",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(r"^(?:グーグルクローム|クローム|エッジ)\s*", "", cleaned)
+    cleaned = re.sub(r"^(?:を)?(?:開いて|ひらいて|起動して)\s*", "", cleaned)
+    cleaned = cleaned.strip(" \t,、。")
+    return cleaned
 
 
 def _browser_launch_candidates(normalized: str) -> list[str]:

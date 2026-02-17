@@ -20,6 +20,7 @@ class TestPromptPlanner(unittest.TestCase):
         command = steps[0]["payload"]["command"]
         self.assertEqual(command[0], "google-chrome")
         self.assertIn("youtube.com/results", command[1])
+        self.assertNotIn("chrome", planned["preview"]["query"].lower())
 
     def test_plan_unsupported_prompt_raises(self) -> None:
         with self.assertRaises(ValueError):

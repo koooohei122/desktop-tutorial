@@ -464,6 +464,25 @@ class TestCli(unittest.TestCase):
             mission_payload = json.loads(mission.stdout)
             self.assertEqual(mission_payload["task"]["task_type"], "mission")
 
+            perception = self.run_cli(
+                [
+                    "enqueue-desktop-perception",
+                    "--path",
+                    "data/autonomy/perception.png",
+                    "--ocr-lang",
+                    "eng",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                    "--language",
+                    "en",
+                ]
+            )
+            self.assertEqual(perception.returncode, 0, msg=perception.stderr)
+            perception_payload = json.loads(perception.stdout)
+            self.assertEqual(perception_payload["task"]["task_type"], "desktop_perception")
+
             run = self.run_cli(
                 [
                     "run-autonomy",
@@ -482,7 +501,7 @@ class TestCli(unittest.TestCase):
             self.assertEqual(run.returncode, 0, msg=run.stderr)
             run_payload = json.loads(run.stdout)
             self.assertEqual(run_payload["summary"]["queue_size"], 0)
-            self.assertGreaterEqual(run_payload["summary"]["executed_count"], 2)
+            self.assertGreaterEqual(run_payload["summary"]["executed_count"], 3)
 
 
 if __name__ == "__main__":

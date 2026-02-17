@@ -74,8 +74,14 @@ python3 -m growing_agent enqueue-desktop-action --action type_text --text "hello
 # Queue a desktop hotkey action
 python3 -m growing_agent enqueue-desktop-action --action hotkey --keys ctrl l
 
+# Queue desktop perception (screenshot + OCR)
+python3 -m growing_agent enqueue-desktop-perception --path data/autonomy/perception.png --ocr-lang eng
+
 # Queue a mission with multiple steps
 python3 -m growing_agent enqueue-mission --title "quick desktop mission" --steps-json '[{"task_type":"desktop_action","payload":{"action":"wait","seconds":0.2}},{"task_type":"command","payload":{"command":["echo","mission-ok"]}}]'
+
+# Mission with recovery steps per failed step
+python3 -m growing_agent enqueue-mission --title "recoverable mission" --steps-json '[{"task_type":"desktop_action","payload":{"action":"open_url","url":"https://example.com"},"on_failure":[{"task_type":"desktop_perception","payload":{"ocr":false}}],"continue_on_failure":true}]'
 
 # Execute until queue is empty (bounded by max-cycles)
 python3 -m growing_agent run-autonomy --until-empty --max-cycles 50 --dry-run
@@ -171,6 +177,9 @@ python3 -m growing_agent fun-status
 
 # Queue desktop action
 python3 -m growing_agent enqueue-desktop-action --action wait --seconds 0.5
+
+# Queue desktop perception
+python3 -m growing_agent enqueue-desktop-perception --path data/autonomy/snapshot.png
 
 # Queue mission task
 python3 -m growing_agent enqueue-mission --title "mission 1" --steps-json '[{"task_type":"write_note","payload":{"path":"data/autonomy/notes.md","text":"hello"}}]'

@@ -192,6 +192,21 @@ def build_parser() -> argparse.ArgumentParser:
     enqueue_desktop_parser.add_argument("--url")
     add_language_argument(enqueue_desktop_parser)
 
+    enqueue_perception_parser = subparsers.add_parser(
+        "enqueue-desktop-perception",
+        help="Queue a desktop perception task (screenshot + optional OCR).",
+    )
+    enqueue_perception_parser.add_argument("--state-path", default="data/state.json")
+    enqueue_perception_parser.add_argument("--log-path", default="data/runner.log")
+    enqueue_perception_parser.add_argument("--title", default="Desktop perception")
+    enqueue_perception_parser.add_argument("--priority", type=int, default=6)
+    enqueue_perception_parser.add_argument("--path", help="Screenshot output path under data/")
+    enqueue_perception_parser.add_argument("--ocr-lang", default="eng")
+    enqueue_perception_parser.add_argument("--ocr", dest="ocr", action="store_true")
+    enqueue_perception_parser.add_argument("--no-ocr", dest="ocr", action="store_false")
+    enqueue_perception_parser.set_defaults(ocr=True)
+    add_language_argument(enqueue_perception_parser)
+
     enqueue_mission_parser = subparsers.add_parser(
         "enqueue-mission",
         help="Queue a multi-step mission task.",
@@ -201,6 +216,9 @@ def build_parser() -> argparse.ArgumentParser:
     enqueue_mission_parser.add_argument("--title", required=True)
     enqueue_mission_parser.add_argument("--priority", type=int, default=7)
     enqueue_mission_parser.add_argument("--max-step-failures", type=int, default=0)
+    enqueue_mission_parser.add_argument("--auto-recovery", dest="auto_recovery", action="store_true")
+    enqueue_mission_parser.add_argument("--no-auto-recovery", dest="auto_recovery", action="store_false")
+    enqueue_mission_parser.set_defaults(auto_recovery=True)
     enqueue_mission_parser.add_argument(
         "--steps-json",
         required=True,
@@ -408,6 +426,32 @@ def main() -> int:
         print(json.dumps(response, indent=2, ensure_ascii=False))
         return 0
 
+    if args.subcommand == "enqueue-desktop-perception":
+        worker = build_autonomous_worker_from_args(args)
+        try:
+            payload: dict[str, Any] = {
+                "ocr": bool(args.ocr),
+                "ocr_lang": str(args.ocr_lang),
+            }
+            if args.path:
+                payload["capture_path"] = str(args.path)
+            task = worker.enqueue(
+                task_type="desktop_perception",
+                title=args.title,
+                payload=payload,
+                priority=args.priority,
+            )
+        except ValueError as error:
+            parser.error(str(error))
+        language = worker.language
+        response = {
+            "task": task,
+            "display_language": language,
+            "message": translate("task_enqueued", language),
+        }
+        print(json.dumps(response, indent=2, ensure_ascii=False))
+        return 0
+
     if args.subcommand == "enqueue-mission":
         worker = build_autonomous_worker_from_args(args)
         try:
@@ -415,6 +459,7 @@ def main() -> int:
             payload = {
                 "steps": steps,
                 "max_step_failures": args.max_step_failures,
+                "auto_recovery": bool(args.auto_recovery),
             }
             task = worker.enqueue(
                 task_type="mission",

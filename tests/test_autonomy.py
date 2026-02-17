@@ -206,6 +206,85 @@ class TestAutonomyWorker(unittest.TestCase):
             self.assertTrue(mission_result["success"])
             self.assertEqual(mission_result["details"]["total_steps"], 2)
 
+    def test_desktop_perception_task(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+            memory = MemoryStore(state_path)
+            runner = CommandRunner(
+                allowed_commands={"scrot", "tesseract"},
+                log_path=log_path,
+            )
+            worker = AutonomousWorker(
+                memory=memory,
+                runner=runner,
+                language="en",
+                workspace_root=tmpdir,
+            )
+
+            worker.enqueue(
+                task_type="desktop_perception",
+                title="screen snapshot",
+                payload={"capture_path": "data/autonomy/perception.png", "ocr": True},
+                priority=6,
+            )
+            result = worker.run(cycles=1, dry_run=True)
+            self.assertEqual(result["summary"]["executed_count"], 1)
+            perception = result["executed"][0]
+            self.assertEqual(perception["task_type"], "desktop_perception")
+            self.assertTrue(perception["success"])
+            self.assertIn(
+                perception["details"]["ocr_status"],
+                {"ok", "failed", "skipped"},
+            )
+
+    def test_mission_on_failure_recovery_steps(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+            memory = MemoryStore(state_path)
+            runner = CommandRunner(
+                allowed_commands={"echo"},
+                log_path=log_path,
+            )
+            worker = AutonomousWorker(
+                memory=memory,
+                runner=runner,
+                language="en",
+                workspace_root=tmpdir,
+            )
+
+            worker.enqueue(
+                task_type="mission",
+                title="recoverable",
+                payload={
+                    "max_step_failures": 0,
+                    "auto_recovery": False,
+                    "steps": [
+                        {
+                            "task_type": "command",
+                            "payload": {"command": ["not-allowed-cmd"]},
+                            "continue_on_failure": True,
+                            "on_failure": [
+                                {
+                                    "task_type": "command",
+                                    "payload": {"command": ["echo", "recovered"]},
+                                }
+                            ],
+                        }
+                    ],
+                },
+                priority=7,
+            )
+
+            result = worker.run(cycles=1, dry_run=True)
+            mission = result["executed"][0]
+            self.assertEqual(mission["task_type"], "mission")
+            self.assertTrue(mission["success"])
+            step = mission["details"]["step_results"][0]
+            self.assertTrue(step.get("recovered"))
+            self.assertIn("on_failure_results", step)
+
 
 if __name__ == "__main__":
     unittest.main()

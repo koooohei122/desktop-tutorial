@@ -17,6 +17,7 @@ SUPPORTED_AUTONOMY_TASKS = (
     "write_note",
     "analyze_state",
     "desktop_action",
+    "desktop_perception",
     "mission",
 )
 DEFAULT_AUTONOMY_ALLOWED_COMMANDS = (
@@ -27,6 +28,7 @@ DEFAULT_AUTONOMY_ALLOWED_COMMANDS = (
     "xdotool",
     "scrot",
     "xdg-open",
+    "tesseract",
 )
 LEVEL_XP_STEP = 100
 
@@ -442,6 +444,8 @@ class AutonomousWorker:
             return self._execute_analyze_state_task(task, state=state, dry_run=dry_run)
         if task_type == "desktop_action":
             return self._execute_desktop_action_task(task, dry_run=dry_run)
+        if task_type == "desktop_perception":
+            return self._execute_desktop_perception_task(task, dry_run=dry_run)
         if task_type == "mission":
             return self._execute_mission_task(task, state=state, dry_run=dry_run, depth=depth)
 
@@ -814,6 +818,95 @@ class AutonomousWorker:
             details=details,
         )
 
+    def _execute_desktop_perception_task(self, task: dict[str, Any], dry_run: bool) -> dict[str, Any]:
+        payload = task.get("payload", {})
+        if not isinstance(payload, dict):
+            payload = {}
+
+        raw_capture_path = payload.get(
+            "capture_path",
+            f"data/autonomy/perception-{str(task.get('task_id', 'snapshot'))}.png",
+        )
+        try:
+            capture_path = self._safe_data_path(raw_capture_path)
+        except ValueError as error:
+            return self._build_result(
+                task=task,
+                success=False,
+                reward=0.0,
+                summary="desktop_perception capture_path is invalid.",
+                details={"error": str(error)},
+            )
+
+        if not dry_run:
+            capture_path.parent.mkdir(parents=True, exist_ok=True)
+
+        capture_result = self.runner.run(
+            ["scrot", str(capture_path)],
+            dry_run=dry_run,
+            timeout_seconds=30.0,
+        )
+        capture_success = bool(
+            capture_result.allowed and capture_result.returncode == 0 and not capture_result.timed_out
+        )
+        if not capture_success:
+            return self._build_result(
+                task=task,
+                success=False,
+                reward=0.0,
+                summary="Desktop perception screenshot capture failed.",
+                details={
+                    "capture_path": str(capture_path),
+                    "returncode": capture_result.returncode,
+                    "allowed": capture_result.allowed,
+                    "timed_out": capture_result.timed_out,
+                    "stdout_excerpt": capture_result.stdout.strip()[:500],
+                    "stderr_excerpt": capture_result.stderr.strip()[:500],
+                },
+            )
+
+        ocr_enabled = self._as_bool(payload.get("ocr", True))
+        ocr_status = "skipped"
+        ocr_excerpt = ""
+        ocr_error = ""
+        ocr_lang = str(payload.get("ocr_lang", "eng"))
+        if ocr_enabled:
+            ocr_command = ["tesseract", str(capture_path), "stdout"]
+            if ocr_lang.strip():
+                ocr_command.extend(["-l", ocr_lang.strip()])
+            ocr_result = self.runner.run(
+                ocr_command,
+                dry_run=dry_run,
+                timeout_seconds=30.0,
+            )
+            ocr_ok = bool(ocr_result.allowed and ocr_result.returncode == 0 and not ocr_result.timed_out)
+            if ocr_ok:
+                ocr_status = "ok"
+                ocr_excerpt = ocr_result.stdout.strip()[:1000]
+            else:
+                ocr_status = "failed"
+                ocr_error = ocr_result.stderr.strip()[:500]
+        success = capture_success
+        reward = 1.0 if ocr_status in {"ok", "skipped"} else 0.8
+        summary = "Desktop perception completed."
+        if ocr_status == "failed":
+            summary = "Desktop perception completed with OCR fallback."
+        return self._build_result(
+            task=task,
+            success=success,
+            reward=reward,
+            summary=summary,
+            details={
+                "capture_path": str(capture_path),
+                "ocr_enabled": ocr_enabled,
+                "ocr_status": ocr_status,
+                "ocr_lang": ocr_lang,
+                "ocr_excerpt": ocr_excerpt,
+                "ocr_error_excerpt": ocr_error,
+                "dry_run": dry_run,
+            },
+        )
+
     def _execute_mission_task(
         self,
         task: dict[str, Any],
@@ -840,6 +933,7 @@ class AutonomousWorker:
             max_step_failures = max(0, int(raw_max_failures))
         except (TypeError, ValueError):
             max_step_failures = 0
+        auto_recovery = self._as_bool(payload.get("auto_recovery", True))
 
         step_results: list[dict[str, Any]] = []
         failure_count = 0
@@ -907,10 +1001,92 @@ class AutonomousWorker:
             step_success = bool(step_result.get("success") is True)
             continue_on_failure = bool(step.get("continue_on_failure", False))
             if not step_success:
-                failure_count += 1
-                if not continue_on_failure or failure_count > max_step_failures:
-                    hard_stop = True
-                    break
+                recovered = False
+                on_failure_results: list[dict[str, Any]] = []
+                raw_on_failure = step.get("on_failure", [])
+                if isinstance(raw_on_failure, list):
+                    for rec_idx, rec_step in enumerate(raw_on_failure, start=1):
+                        if not isinstance(rec_step, dict):
+                            on_failure_results.append(
+                                {
+                                    "step_index": idx,
+                                    "recovery_index": rec_idx,
+                                    "success": False,
+                                    "summary": "Invalid recovery step payload; expected object.",
+                                }
+                            )
+                            continue
+                        rec_task_type = str(rec_step.get("task_type", "")).strip()
+                        if rec_task_type not in SUPPORTED_AUTONOMY_TASKS or rec_task_type == "mission":
+                            on_failure_results.append(
+                                {
+                                    "step_index": idx,
+                                    "recovery_index": rec_idx,
+                                    "success": False,
+                                    "summary": (
+                                        f"Unsupported recovery task_type: {rec_task_type}"
+                                    ),
+                                }
+                            )
+                            continue
+                        rec_payload = rec_step.get("payload", {})
+                        if not isinstance(rec_payload, dict):
+                            rec_payload = {}
+                        rec_title = str(
+                            rec_step.get(
+                                "title",
+                                f"{step_title} :: recovery {rec_idx}",
+                            )
+                        ).strip()
+                        raw_rec_priority = rec_step.get("priority", step_priority)
+                        try:
+                            rec_priority = max(1, min(10, int(raw_rec_priority)))
+                        except (TypeError, ValueError):
+                            rec_priority = step_priority
+                        rec_task = {
+                            "task_id": f"{task.get('task_id', 'mission')}:step:{idx}:recovery:{rec_idx}",
+                            "task_type": rec_task_type,
+                            "title": rec_title,
+                            "payload": rec_payload,
+                            "priority": rec_priority,
+                            "attempts": 0,
+                            "created_at_utc": _utcnow(),
+                            "from_mission": str(task.get("task_id", "")),
+                            "recovery_for_step": idx,
+                        }
+                        rec_result = self._execute_task(
+                            rec_task,
+                            state,
+                            dry_run=dry_run,
+                            depth=depth + 1,
+                        )
+                        rec_result["recovery_index"] = rec_idx
+                        on_failure_results.append(rec_result)
+                        if not bool(rec_result.get("success") is True):
+                            # keep evaluating remaining recovery steps for traceability
+                            continue
+                    if on_failure_results:
+                        step_result["on_failure_results"] = on_failure_results
+                        recovered = all(
+                            bool(item.get("success") is True)
+                            for item in on_failure_results
+                        )
+
+                if not recovered:
+                    failure_count += 1
+                    if (
+                        auto_recovery
+                        and not on_failure_results
+                        and str(step_task_type) in {"desktop_action", "desktop_perception"}
+                    ):
+                        step_result["auto_recovery_hint"] = (
+                            "No explicit on_failure steps. A follow-up recovery mission may be enqueued."
+                        )
+                    if not continue_on_failure or failure_count > max_step_failures:
+                        hard_stop = True
+                        break
+                else:
+                    step_result["recovered"] = True
 
         executed_steps = len(step_results)
         total_steps = len(raw_steps)
@@ -934,6 +1110,7 @@ class AutonomousWorker:
             "total_steps": total_steps,
             "failure_count": failure_count,
             "max_step_failures": max_step_failures,
+            "auto_recovery": auto_recovery,
             "completed_all_steps": completed_all,
             "dry_run": dry_run,
             "step_results": step_results,
@@ -1169,6 +1346,7 @@ class AutonomousWorker:
             "write_note": "Ensure target path is under data/ and text is non-empty.",
             "analyze_state": "Verify report output path and state structure.",
             "desktop_action": "Check desktop backend tools and action payload fields.",
+            "desktop_perception": "Check screenshot path and OCR availability.",
             "mission": "Inspect failed steps and retry with continue_on_failure where needed.",
         }.get(task_type, "Review task payload and executor support.")
 
@@ -1223,6 +1401,65 @@ class AutonomousWorker:
             return
 
         source_task_id = str(task.get("task_id", ""))
+        task_type = str(task.get("task_type", ""))
+
+        if task_type in {"desktop_action", "desktop_perception", "mission"}:
+            for queued in queue:
+                if not isinstance(queued, dict):
+                    continue
+                if str(queued.get("task_type")) != "mission":
+                    continue
+                payload = queued.get("payload", {})
+                if not isinstance(payload, dict):
+                    continue
+                if str(payload.get("source_task_id")) != source_task_id:
+                    continue
+                if payload.get("auto_recovery") is True:
+                    return
+
+            recovery_mission = {
+                "task_id": uuid.uuid4().hex[:12],
+                "task_type": "mission",
+                "title": f"Auto recovery for {task.get('title', source_task_id)}",
+                "payload": {
+                    "source_task_id": source_task_id,
+                    "auto_recovery": True,
+                    "max_step_failures": 1,
+                    "steps": [
+                        {
+                            "task_type": "desktop_action",
+                            "title": "Recovery wait",
+                            "payload": {"action": "wait", "seconds": 0.3},
+                            "continue_on_failure": True,
+                        },
+                        {
+                            "task_type": "desktop_perception",
+                            "title": "Recovery perception snapshot",
+                            "payload": {
+                                "capture_path": "data/autonomy/recovery-snapshot.png",
+                                "ocr": False,
+                            },
+                            "continue_on_failure": True,
+                        },
+                        {
+                            "task_type": "analyze_state",
+                            "title": "Recovery state analysis",
+                            "payload": {
+                                "path": "data/autonomy/insights.log",
+                                "source_task_id": source_task_id,
+                            },
+                            "continue_on_failure": True,
+                        },
+                    ],
+                },
+                "priority": min(10, int(task.get("priority", 5)) + 2),
+                "attempts": 0,
+                "created_at_utc": _utcnow(),
+                "auto_generated": True,
+            }
+            queue.append(recovery_mission)
+            return
+
         for queued in queue:
             if not isinstance(queued, dict):
                 continue
@@ -1232,20 +1469,21 @@ class AutonomousWorker:
             if isinstance(payload, dict) and str(payload.get("source_task_id")) == source_task_id:
                 return
 
-        follow_up = {
-            "task_id": uuid.uuid4().hex[:12],
-            "task_type": "analyze_state",
-            "title": f"Analyze failure for {task.get('title', source_task_id)}",
-            "payload": {
-                "path": "data/autonomy/insights.log",
-                "source_task_id": source_task_id,
-            },
-            "priority": min(10, int(task.get("priority", 5)) + 1),
-            "attempts": 0,
-            "created_at_utc": _utcnow(),
-            "auto_generated": True,
-        }
-        queue.append(follow_up)
+        queue.append(
+            {
+                "task_id": uuid.uuid4().hex[:12],
+                "task_type": "analyze_state",
+                "title": f"Analyze failure for {task.get('title', source_task_id)}",
+                "payload": {
+                    "path": "data/autonomy/insights.log",
+                    "source_task_id": source_task_id,
+                },
+                "priority": min(10, int(task.get("priority", 5)) + 1),
+                "attempts": 0,
+                "created_at_utc": _utcnow(),
+                "auto_generated": True,
+            }
+        )
 
     def _build_summary(
         self,
@@ -1293,6 +1531,19 @@ class AutonomousWorker:
             "new_badges": new_badges,
             "completed_challenges": int(game.get("completed_challenges", 0)),
         }
+
+    def _as_bool(self, value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return value != 0
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"1", "true", "yes", "y", "on"}:
+                return True
+            if normalized in {"0", "false", "no", "n", "off"}:
+                return False
+        return bool(value)
 
     def _safe_data_path(self, raw_path: Any) -> Path:
         if not isinstance(raw_path, str) or not raw_path.strip():

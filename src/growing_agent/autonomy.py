@@ -795,7 +795,7 @@ class AutonomousWorker:
             details = {
                 "action": action,
                 "target": focus_target,
-                "window_title": window_title,
+                "window_title": window_title if window_title else None,
                 "window_class": window_class if window_class else None,
                 "window_pid": window_pid,
                 "window_index": window_index,

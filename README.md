@@ -71,6 +71,12 @@ You can queue GUI-like actions and multi-step missions:
 # Queue a desktop typing action
 python3 -m growing_agent enqueue-desktop-action --action type_text --text "hello world"
 
+# Focus a target app window by title
+python3 -m growing_agent enqueue-desktop-action --action focus_window --window-title "Terminal"
+
+# Type into a specific window (focuses first)
+python3 -m growing_agent enqueue-desktop-action --action type_text --text "hello world" --window-title "Terminal"
+
 # Queue a desktop hotkey action
 python3 -m growing_agent enqueue-desktop-action --action hotkey --keys ctrl l
 
@@ -177,6 +183,12 @@ python3 -m growing_agent fun-status
 
 # Queue desktop action
 python3 -m growing_agent enqueue-desktop-action --action wait --seconds 0.5
+
+# Queue desktop window focus action
+python3 -m growing_agent enqueue-desktop-action --action focus_window --window-title "Terminal"
+
+# Queue desktop action with target window focus
+python3 -m growing_agent enqueue-desktop-action --action type_text --text "hello" --window-title "Terminal"
 
 # Queue desktop perception
 python3 -m growing_agent enqueue-desktop-perception --path data/autonomy/snapshot.png

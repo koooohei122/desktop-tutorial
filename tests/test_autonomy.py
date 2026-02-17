@@ -206,6 +206,70 @@ class TestAutonomyWorker(unittest.TestCase):
             self.assertTrue(mission_result["success"])
             self.assertEqual(mission_result["details"]["total_steps"], 2)
 
+    def test_desktop_action_focus_window_requires_title(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+            memory = MemoryStore(state_path)
+            runner = CommandRunner(
+                allowed_commands={"xdotool"},
+                log_path=log_path,
+            )
+            worker = AutonomousWorker(
+                memory=memory,
+                runner=runner,
+                language="en",
+                workspace_root=tmpdir,
+            )
+
+            worker.enqueue(
+                task_type="desktop_action",
+                title="focus missing title",
+                payload={"action": "focus_window"},
+                priority=6,
+            )
+            result = worker.run(cycles=1, dry_run=True)
+            self.assertEqual(result["summary"]["executed_count"], 1)
+            action_result = result["executed"][0]
+            self.assertFalse(action_result["success"])
+            self.assertIn("window_title", action_result["summary"])
+
+    def test_desktop_action_type_text_with_window_target(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+            memory = MemoryStore(state_path)
+            runner = CommandRunner(
+                allowed_commands={"xdotool"},
+                log_path=log_path,
+            )
+            worker = AutonomousWorker(
+                memory=memory,
+                runner=runner,
+                language="en",
+                workspace_root=tmpdir,
+            )
+
+            worker.enqueue(
+                task_type="desktop_action",
+                title="type text into target window",
+                payload={
+                    "action": "type_text",
+                    "text": "hello",
+                    "window_title": "Terminal",
+                    "window_index": 1,
+                },
+                priority=6,
+            )
+            result = worker.run(cycles=1, dry_run=True)
+            self.assertEqual(result["summary"]["executed_count"], 1)
+            action_result = result["executed"][0]
+            self.assertTrue(action_result["success"])
+            self.assertEqual(action_result["details"]["window_title"], "Terminal")
+            self.assertEqual(action_result["details"]["window_index"], 1)
+            self.assertIn("focus", action_result["details"])
+            self.assertTrue(action_result["details"]["focus"]["dry_run"])
+
     def test_desktop_perception_task(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = Path(tmpdir) / "state.json"

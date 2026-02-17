@@ -649,6 +649,14 @@ class AutonomousWorker:
                 details={},
             )
 
+        window_title_raw = payload.get("window_title")
+        window_title = window_title_raw.strip() if isinstance(window_title_raw, str) else ""
+        raw_window_index = payload.get("window_index", 0)
+        try:
+            window_index = max(0, int(raw_window_index))
+        except (TypeError, ValueError):
+            window_index = 0
+
         if action == "wait":
             raw_seconds = payload.get("seconds", 1.0)
             try:
@@ -674,8 +682,48 @@ class AutonomousWorker:
                 details={"seconds": capped, "dry_run": dry_run},
             )
 
+        if action == "focus_window":
+            if not window_title:
+                return self._build_result(
+                    task=task,
+                    success=False,
+                    reward=0.0,
+                    summary="focus_window action requires a non-empty window_title.",
+                    details={},
+                )
+            focus_result = self._focus_window(
+                window_title=window_title,
+                window_index=window_index,
+                dry_run=dry_run,
+            )
+            success = bool(focus_result.get("success") is True)
+            reward = 1.0 if success else 0.0
+            summary = (
+                "Desktop action 'focus_window' succeeded."
+                if success
+                else "Desktop action 'focus_window' failed."
+            )
+            raw_focus_details = focus_result.get("details", {})
+            focus_details = raw_focus_details if isinstance(raw_focus_details, dict) else {}
+            details = {
+                "action": action,
+                "target": window_title,
+                "window_title": window_title,
+                "window_index": window_index,
+                "focus": focus_details,
+                "focus_summary": str(focus_result.get("summary", "")),
+            }
+            return self._build_result(
+                task=task,
+                success=success,
+                reward=reward,
+                summary=summary,
+                details=details,
+            )
+
         command: list[str] | None = None
         detail_target: str | None = None
+        focus_details: dict[str, Any] | None = None
         if action == "hotkey":
             raw_keys = payload.get("keys")
             if isinstance(raw_keys, str):
@@ -786,6 +834,30 @@ class AutonomousWorker:
                 details={"action": action},
             )
 
+        if window_title and action in {"hotkey", "type_text", "click", "move", "screenshot"}:
+            focus_result = self._focus_window(
+                window_title=window_title,
+                window_index=window_index,
+                dry_run=dry_run,
+            )
+            raw_focus_details = focus_result.get("details", {})
+            focus_details = raw_focus_details if isinstance(raw_focus_details, dict) else {}
+            if not bool(focus_result.get("success") is True):
+                return self._build_result(
+                    task=task,
+                    success=False,
+                    reward=0.0,
+                    summary=f"Desktop action '{action}' failed: unable to focus target window.",
+                    details={
+                        "action": action,
+                        "target": detail_target,
+                        "window_title": window_title,
+                        "window_index": window_index,
+                        "focus": focus_details,
+                        "focus_summary": str(focus_result.get("summary", "")),
+                    },
+                )
+
         if command is None:
             return self._build_result(
                 task=task,
@@ -803,6 +875,8 @@ class AutonomousWorker:
             "action": action,
             "target": detail_target,
             "command": run_result.command,
+            "window_title": window_title if window_title else None,
+            "window_index": window_index if window_title else None,
             "returncode": run_result.returncode,
             "allowed": run_result.allowed,
             "timed_out": run_result.timed_out,
@@ -810,6 +884,8 @@ class AutonomousWorker:
             "stdout_excerpt": run_result.stdout.strip()[:500],
             "stderr_excerpt": run_result.stderr.strip()[:500],
         }
+        if focus_details is not None:
+            details["focus"] = focus_details
         return self._build_result(
             task=task,
             success=success,
@@ -1345,7 +1421,7 @@ class AutonomousWorker:
             "command": "Verify allowlist, executable path, and command arguments.",
             "write_note": "Ensure target path is under data/ and text is non-empty.",
             "analyze_state": "Verify report output path and state structure.",
-            "desktop_action": "Check desktop backend tools and action payload fields.",
+            "desktop_action": "Check desktop backend tools, payload fields, and window_title targeting.",
             "desktop_perception": "Check screenshot path and OCR availability.",
             "mission": "Inspect failed steps and retry with continue_on_failure where needed.",
         }.get(task_type, "Review task payload and executor support.")
@@ -1544,6 +1620,118 @@ class AutonomousWorker:
             if normalized in {"0", "false", "no", "n", "off"}:
                 return False
         return bool(value)
+
+    def _focus_window(self, window_title: str, window_index: int, dry_run: bool) -> dict[str, Any]:
+        normalized_title = window_title.strip()
+        try:
+            safe_index = max(0, int(window_index))
+        except (TypeError, ValueError):
+            safe_index = 0
+
+        if not normalized_title:
+            return {
+                "success": False,
+                "summary": "window_title must be a non-empty string.",
+                "details": {},
+            }
+
+        if dry_run:
+            return {
+                "success": True,
+                "summary": "Window focus simulated (dry-run).",
+                "details": {
+                    "window_title": normalized_title,
+                    "window_index": safe_index,
+                    "window_id": "dry-run-window",
+                    "matched_window_ids": [],
+                    "dry_run": True,
+                },
+            }
+
+        search_result = self.runner.run(
+            ["xdotool", "search", "--name", normalized_title],
+            dry_run=False,
+            timeout_seconds=30.0,
+        )
+        matched_window_ids = [
+            line.strip()
+            for line in search_result.stdout.splitlines()
+            if line.strip()
+        ]
+        search_success = bool(
+            search_result.allowed
+            and search_result.returncode == 0
+            and not search_result.timed_out
+            and matched_window_ids
+        )
+        if not search_success:
+            return {
+                "success": False,
+                "summary": "No matching window found for window_title.",
+                "details": {
+                    "window_title": normalized_title,
+                    "window_index": safe_index,
+                    "search_returncode": search_result.returncode,
+                    "search_allowed": search_result.allowed,
+                    "search_timed_out": search_result.timed_out,
+                    "search_stdout_excerpt": search_result.stdout.strip()[:500],
+                    "search_stderr_excerpt": search_result.stderr.strip()[:500],
+                    "matched_window_ids": matched_window_ids[:10],
+                },
+            }
+
+        if safe_index >= len(matched_window_ids):
+            return {
+                "success": False,
+                "summary": "window_index is out of range for matched windows.",
+                "details": {
+                    "window_title": normalized_title,
+                    "window_index": safe_index,
+                    "matched_count": len(matched_window_ids),
+                    "matched_window_ids": matched_window_ids[:10],
+                },
+            }
+
+        selected_window_id = matched_window_ids[safe_index]
+        activate_result = self.runner.run(
+            ["xdotool", "windowactivate", "--sync", selected_window_id],
+            dry_run=False,
+            timeout_seconds=30.0,
+        )
+        activate_success = bool(
+            activate_result.allowed
+            and activate_result.returncode == 0
+            and not activate_result.timed_out
+        )
+        if not activate_success:
+            return {
+                "success": False,
+                "summary": "Window activation failed.",
+                "details": {
+                    "window_title": normalized_title,
+                    "window_index": safe_index,
+                    "window_id": selected_window_id,
+                    "matched_window_ids": matched_window_ids[:10],
+                    "activate_returncode": activate_result.returncode,
+                    "activate_allowed": activate_result.allowed,
+                    "activate_timed_out": activate_result.timed_out,
+                    "activate_stdout_excerpt": activate_result.stdout.strip()[:500],
+                    "activate_stderr_excerpt": activate_result.stderr.strip()[:500],
+                },
+            }
+
+        return {
+            "success": True,
+            "summary": "Window focus completed.",
+            "details": {
+                "window_title": normalized_title,
+                "window_index": safe_index,
+                "window_id": selected_window_id,
+                "matched_count": len(matched_window_ids),
+                "matched_window_ids": matched_window_ids[:10],
+                "activate_duration_seconds": activate_result.duration_seconds,
+            },
+        }
 
     def _safe_data_path(self, raw_path: Any) -> Path:
         if not isinstance(raw_path, str) or not raw_path.strip():

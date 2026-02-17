@@ -430,9 +430,11 @@ class TestCli(unittest.TestCase):
                 [
                     "enqueue-desktop-action",
                     "--action",
-                    "wait",
-                    "--seconds",
-                    "0.01",
+                    "focus_window",
+                    "--window-title",
+                    "Terminal",
+                    "--window-index",
+                    "0",
                     "--state-path",
                     str(state_path),
                     "--log-path",
@@ -444,6 +446,8 @@ class TestCli(unittest.TestCase):
             self.assertEqual(desktop.returncode, 0, msg=desktop.stderr)
             desktop_payload = json.loads(desktop.stdout)
             self.assertEqual(desktop_payload["task"]["task_type"], "desktop_action")
+            self.assertEqual(desktop_payload["task"]["payload"]["action"], "focus_window")
+            self.assertEqual(desktop_payload["task"]["payload"]["window_title"], "Terminal")
 
             mission = self.run_cli(
                 [

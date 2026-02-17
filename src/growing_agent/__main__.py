@@ -129,6 +129,10 @@ def build_desktop_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
         if args.url is None:
             raise ValueError("open_url action requires --url")
         payload["url"] = str(args.url)
+    elif args.action == "launch_app":
+        if args.app is None or not str(args.app).strip():
+            raise ValueError("launch_app action requires --app")
+        payload["app_name"] = str(args.app).strip()
 
     if has_window_selector:
         if window_title:
@@ -233,13 +237,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     enqueue_desktop_parser = subparsers.add_parser(
         "enqueue-desktop-action",
-        help="Queue a desktop action task (click/type/hotkey/wait/screenshot/open_url/focus_window).",
+        help="Queue a desktop action task (click/type/hotkey/wait/screenshot/open_url/focus_window/launch_app).",
     )
     enqueue_desktop_parser.add_argument("--state-path", default="data/state.json")
     enqueue_desktop_parser.add_argument("--log-path", default="data/runner.log")
     enqueue_desktop_parser.add_argument(
         "--action",
-        choices=("hotkey", "type_text", "click", "move", "wait", "screenshot", "open_url", "focus_window"),
+        choices=("hotkey", "type_text", "click", "move", "wait", "screenshot", "open_url", "focus_window", "launch_app"),
         required=True,
     )
     enqueue_desktop_parser.add_argument("--title", default="Desktop action")
@@ -252,6 +256,7 @@ def build_parser() -> argparse.ArgumentParser:
     enqueue_desktop_parser.add_argument("--seconds", type=float)
     enqueue_desktop_parser.add_argument("--path")
     enqueue_desktop_parser.add_argument("--url")
+    enqueue_desktop_parser.add_argument("--app", help="App name for launch_app action.")
     enqueue_desktop_parser.add_argument("--window-title")
     enqueue_desktop_parser.add_argument("--window-class")
     enqueue_desktop_parser.add_argument("--window-pid", type=int)

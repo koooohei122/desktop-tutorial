@@ -67,66 +67,6 @@ HOTKEY_ALIASES: dict[str, str] = {
 
 
 @dataclass(frozen=True)
-class AppProfile:
-    name: str
-    keywords: tuple[str, ...]
-    commands: tuple[str, ...]
-    is_browser: bool = False
-
-
-APP_PROFILES: tuple[AppProfile, ...] = (
-    AppProfile(
-        name="google-chrome",
-        keywords=("google chrome", "chrome", "クローム", "グーグルクローム"),
-        commands=("google-chrome", "chromium-browser", "chromium"),
-        is_browser=True,
-    ),
-    AppProfile(
-        name="microsoft-edge",
-        keywords=("microsoft edge", "edge", "エッジ"),
-        commands=("microsoft-edge", "google-chrome", "chromium-browser", "chromium"),
-        is_browser=True,
-    ),
-    AppProfile(
-        name="firefox",
-        keywords=("firefox", "ファイアフォックス"),
-        commands=("firefox",),
-        is_browser=True,
-    ),
-    AppProfile(
-        name="code",
-        keywords=("vscode", "visual studio code", "vs code", "code"),
-        commands=("code",),
-        is_browser=False,
-    ),
-    AppProfile(
-        name="gnome-terminal",
-        keywords=("terminal", "ターミナル"),
-        commands=("gnome-terminal", "x-terminal-emulator"),
-        is_browser=False,
-    ),
-    AppProfile(
-        name="slack",
-        keywords=("slack",),
-        commands=("slack",),
-        is_browser=False,
-    ),
-    AppProfile(
-        name="spotify",
-        keywords=("spotify", "スポティファイ"),
-        commands=("spotify",),
-        is_browser=False,
-    ),
-    AppProfile(
-        name="gedit",
-        keywords=("メモ帳", "notepad", "text editor", "テキストエディタ", "gedit", "kate", "mousepad", "xed", "pluma"),
-        commands=("gedit", "xed", "mousepad", "kate", "notepadqq", "pluma"),
-        is_browser=False,
-    ),
-)
-
-
-@dataclass(frozen=True)
 class PromptPlan:
     intent: str
     task_type: str
@@ -248,18 +188,19 @@ def _plan_generic_prompt_request(prompt: str, normalized: str, priority: int) ->
             continue
         clause_norm = _normalize_prompt(clause_text)
 
-        app = _extract_open_app_profile(clause_norm)
-        if app is not None:
+        open_app_request = _extract_open_app_request(clause_text, clause_norm)
+        if open_app_request is not None:
+            app_name, is_browser_app = open_app_request
             steps.append(
-                _build_app_launch_step(
-                    commands=list(app.commands),
-                    title=f"Open app ({app.name})",
+                _build_launch_app_step(
+                    app_name=app_name,
+                    title=f"Open app ({app_name})",
                 )
             )
             preview_actions.append(
-                {"clause_index": index, "action": "open_app", "app": app.name}
+                {"clause_index": index, "action": "open_app", "app": app_name}
             )
-            if app.is_browser:
+            if is_browser_app:
                 browser_opened = True
                 browser_session_ready = True
 
@@ -503,15 +444,59 @@ def _prompt_mentions_browser(normalized: str) -> bool:
     return False
 
 
-def _extract_open_app_profile(clause_normalized: str) -> AppProfile | None:
+def _extract_open_app_request(clause_text: str, clause_normalized: str) -> tuple[str, bool] | None:
     if not any(keyword in clause_normalized for keyword in OPEN_HINT_KEYWORDS):
         return None
-    for profile in APP_PROFILES:
-        if any(keyword in clause_normalized for keyword in profile.keywords):
-            return profile
-    if "browser" in clause_normalized or "ブラウザ" in clause_normalized:
-        return APP_PROFILES[0]
+
+    english = re.search(
+        r"(?:open|launch|start)\s+(?P<app>.+)",
+        clause_text,
+        flags=re.IGNORECASE,
+    )
+    if english:
+        app_name = _sanitize_app_name(str(english.group("app")))
+        if app_name:
+            return app_name, _looks_like_browser_app(app_name)
+
+    japanese = re.search(
+        r"(?P<app>.+?)(?:を)?(?:開いて|ひらいて|開く|起動して|起動|立ち上げて|立ち上げる)",
+        clause_text,
+        flags=re.IGNORECASE,
+    )
+    if japanese:
+        app_name = _sanitize_app_name(str(japanese.group("app")))
+        if app_name:
+            return app_name, _looks_like_browser_app(app_name)
+
+    if "browser" in clause_normalized or "ブラウザ" in clause_text:
+        return "browser", True
     return None
+
+
+def _sanitize_app_name(value: str) -> str:
+    cleaned = value.strip(" \t,、。.!?;:()[]{}\"'“”")
+    cleaned = re.sub(
+        r"\s+to\s+(?:search|find|look|play|open|launch|start).*$",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(r"\s+(?:and|then)$", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s*(?:app|application|software)$", "", cleaned, flags=re.IGNORECASE)
+    cleaned = cleaned.strip(" \t,、。.!?;:()[]{}\"'“”")
+    return cleaned
+
+
+def _looks_like_browser_app(app_name: str) -> bool:
+    normalized = _normalize_prompt(app_name)
+    if not normalized:
+        return False
+    if "browser" in normalized or "ブラウザ" in app_name:
+        return True
+    for hints, _commands in BROWSER_HINTS:
+        if any(hint in normalized for hint in hints):
+            return True
+    return False
 
 
 def _extract_urls(clause_text: str) -> list[str]:
@@ -702,27 +687,14 @@ def _build_platform_search_url(platform: str, query: str) -> str:
     return template.format(query=encoded_query)
 
 
-def _build_app_launch_step(commands: list[str], title: str) -> dict[str, Any]:
-    launch_step: dict[str, Any] = {
-        "task_type": "command",
+def _build_launch_app_step(app_name: str, title: str) -> dict[str, Any]:
+    return {
+        "task_type": "desktop_action",
         "title": title,
-        "payload": {"command": [commands[0]]},
+        "payload": {"action": "launch_app", "app_name": app_name},
         "priority": 7,
         "continue_on_failure": True,
     }
-    on_failure: list[dict[str, Any]] = []
-    for fallback in commands[1:]:
-        on_failure.append(
-            {
-                "task_type": "command",
-                "title": f"{title} fallback ({fallback})",
-                "payload": {"command": [fallback]},
-                "priority": 6,
-            }
-        )
-    if on_failure:
-        launch_step["on_failure"] = on_failure
-    return launch_step
 
 
 def _build_platform_search_steps(

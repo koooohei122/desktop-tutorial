@@ -608,6 +608,32 @@ class TestCli(unittest.TestCase):
             self.assertEqual(task_payload["window_pid"], 12345)
             self.assertTrue(task_payload["relative_to_window"])
 
+    def test_enqueue_desktop_action_launch_app_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+
+            result = self.run_cli(
+                [
+                    "enqueue-desktop-action",
+                    "--action",
+                    "launch_app",
+                    "--app",
+                    "obsidian",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                    "--language",
+                    "en",
+                ]
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            payload = json.loads(result.stdout)
+            task_payload = payload["task"]["payload"]
+            self.assertEqual(task_payload["action"], "launch_app")
+            self.assertEqual(task_payload["app_name"], "obsidian")
+
     def test_list_windows_command_dry_run(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = Path(tmpdir) / "state.json"
@@ -724,8 +750,9 @@ class TestCli(unittest.TestCase):
             self.assertEqual(payload["task"]["task_type"], "mission")
             self.assertEqual(payload["summary"]["executed_count"], 1)
             mission_steps = payload["task"]["payload"]["steps"]
-            self.assertEqual(mission_steps[0]["task_type"], "command")
-            self.assertEqual(mission_steps[0]["payload"]["command"][0], "firefox")
+            self.assertEqual(mission_steps[0]["task_type"], "desktop_action")
+            self.assertEqual(mission_steps[0]["payload"]["action"], "launch_app")
+            self.assertEqual(mission_steps[0]["payload"]["app_name"], "Firefox")
             type_steps = [
                 step
                 for step in mission_steps
@@ -759,8 +786,9 @@ class TestCli(unittest.TestCase):
             payload = json.loads(result.stdout)
             self.assertEqual(payload["planned"]["intent"], "generic_prompt_workflow")
             mission_steps = payload["task"]["payload"]["steps"]
-            self.assertEqual(mission_steps[0]["task_type"], "command")
-            self.assertEqual(mission_steps[0]["payload"]["command"][0], "gedit")
+            self.assertEqual(mission_steps[0]["task_type"], "desktop_action")
+            self.assertEqual(mission_steps[0]["payload"]["action"], "launch_app")
+            self.assertEqual(mission_steps[0]["payload"]["app_name"], "メモ帳")
             diary_steps = [
                 step
                 for step in mission_steps

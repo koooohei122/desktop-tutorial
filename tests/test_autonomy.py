@@ -406,6 +406,35 @@ class TestAutonomyWorker(unittest.TestCase):
             self.assertIn("not supported", action_result["summary"])
             self.assertEqual(action_result["details"]["action"], "open_url")
 
+    def test_desktop_action_launch_app_dry_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+            memory = MemoryStore(state_path)
+            runner = CommandRunner(
+                allowed_commands={"xdotool"},
+                log_path=log_path,
+            )
+            worker = AutonomousWorker(
+                memory=memory,
+                runner=runner,
+                language="en",
+                workspace_root=tmpdir,
+            )
+
+            worker.enqueue(
+                task_type="desktop_action",
+                title="generic app launch",
+                payload={"action": "launch_app", "app_name": "Firefox"},
+                priority=6,
+            )
+            result = worker.run(cycles=1, dry_run=True)
+            action_result = result["executed"][0]
+            self.assertTrue(action_result["success"])
+            self.assertEqual(action_result["details"]["action"], "launch_app")
+            self.assertEqual(action_result["details"]["app_name"], "Firefox")
+            self.assertIn("launched_command", action_result["details"])
+
     def test_inspect_windows_dry_run(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = Path(tmpdir) / "state.json"

@@ -35,8 +35,9 @@ class TestPromptPlanner(unittest.TestCase):
         payload = planned["payload"]
         steps = payload.get("steps", [])
         self.assertTrue(isinstance(steps, list) and len(steps) >= 2)
-        self.assertEqual(steps[0]["task_type"], "command")
-        self.assertEqual(steps[0]["payload"]["command"][0], "firefox")
+        self.assertEqual(steps[0]["task_type"], "desktop_action")
+        self.assertEqual(steps[0]["payload"]["action"], "launch_app")
+        self.assertEqual(steps[0]["payload"]["app_name"], "Firefox")
         type_steps = [
             step
             for step in steps
@@ -74,8 +75,9 @@ class TestPromptPlanner(unittest.TestCase):
         self.assertEqual(planned["intent"], "generic_prompt_workflow")
         steps = planned["payload"]["steps"]
         self.assertTrue(steps)
-        self.assertEqual(steps[0]["task_type"], "command")
-        self.assertEqual(steps[0]["payload"]["command"][0], "gedit")
+        self.assertEqual(steps[0]["task_type"], "desktop_action")
+        self.assertEqual(steps[0]["payload"]["action"], "launch_app")
+        self.assertEqual(steps[0]["payload"]["app_name"], "メモ帳")
 
         type_steps = [
             step

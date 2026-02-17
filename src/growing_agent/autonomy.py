@@ -4,6 +4,9 @@ from datetime import date, datetime, timedelta, timezone
 import json
 from pathlib import Path
 import re
+import shlex
+import shutil
+import subprocess
 import time
 from typing import Any
 from urllib.parse import urlparse
@@ -11,7 +14,7 @@ import uuid
 
 from .i18n import DEFAULT_LANGUAGE, normalize_language
 from .memory import MemoryStore
-from .tools.runner import CommandRunner
+from .tools.runner import BLOCKED_TOKENS, CommandRunner
 
 SUPPORTED_AUTONOMY_TASKS = (
     "command",
@@ -54,6 +57,28 @@ WINDOW_MATCH_MODES = ("smart", "exact", "contains", "regex")
 DEFAULT_FOCUS_SETTLE_SECONDS = 0.12
 MAX_FOCUS_SETTLE_SECONDS = 2.0
 MAX_WINDOW_SEARCH_CANDIDATES = 200
+MAX_DESKTOP_ENTRY_CANDIDATES = 120
+MAX_APP_LAUNCH_ATTEMPTS = 10
+DESKTOP_EXEC_PLACEHOLDER_PATTERN = re.compile(r"%[fFuUdDnNickvm]")
+DESKTOP_APPLICATION_DIRS: tuple[Path, ...] = (
+    Path("/usr/share/applications"),
+    Path.home() / ".local/share/applications",
+    Path("/var/lib/flatpak/exports/share/applications"),
+    Path.home() / ".local/share/flatpak/exports/share/applications",
+)
+UNSAFE_LAUNCH_EXECUTABLES = {
+    "bash",
+    "sh",
+    "zsh",
+    "fish",
+    "python",
+    "python3",
+    "node",
+    "perl",
+    "ruby",
+    "sudo",
+    "su",
+}
 
 FUN_TITLES: tuple[tuple[int, str], ...] = (
     (1, "Rookie"),
@@ -733,6 +758,35 @@ class AutonomousWorker:
                 reward=0.0,
                 summary="desktop_action requires an action field.",
                 details={},
+            )
+
+        if action == "launch_app":
+            raw_app_name = payload.get("app_name", payload.get("app"))
+            app_name = raw_app_name.strip() if isinstance(raw_app_name, str) else ""
+            if not app_name:
+                return self._build_result(
+                    task=task,
+                    success=False,
+                    reward=0.0,
+                    summary="launch_app action requires app_name.",
+                    details={},
+                )
+            launch_result = self._launch_app(app_name=app_name, dry_run=dry_run)
+            details_raw = launch_result.get("details", {})
+            details = details_raw if isinstance(details_raw, dict) else {}
+            details["action"] = "launch_app"
+            details["app_name"] = app_name
+            success = bool(launch_result.get("success") is True)
+            return self._build_result(
+                task=task,
+                success=success,
+                reward=1.0 if success else 0.0,
+                summary=(
+                    "Desktop action 'launch_app' succeeded."
+                    if success
+                    else "Desktop action 'launch_app' failed."
+                ),
+                details=details,
             )
 
         window_title_raw = payload.get("window_title")
@@ -2394,6 +2448,361 @@ class AutonomousWorker:
                 "activation_attempts": activation_attempts,
                 "active_window_id": active_window_id,
             },
+        }
+
+    def _launch_app(self, app_name: str, dry_run: bool) -> dict[str, Any]:
+        normalized_query = self._normalize_app_query(app_name)
+        if not normalized_query:
+            return {
+                "success": False,
+                "summary": "Could not normalize app_name for launch.",
+                "details": {"app_name": app_name},
+            }
+
+        candidates = self._discover_app_launch_candidates(
+            app_name=app_name,
+            normalized_query=normalized_query,
+        )
+        if not candidates:
+            if dry_run:
+                synthetic_command = self._candidate_command_names_from_label(app_name)
+                fallback_command = [synthetic_command[0]] if synthetic_command else [normalized_query]
+                return {
+                    "success": True,
+                    "summary": "Application launch simulated (dry-run).",
+                    "details": {
+                        "app_name": app_name,
+                        "normalized_query": normalized_query,
+                        "launched_command": fallback_command,
+                        "source": "dry_run_synthetic",
+                        "label": app_name,
+                        "desktop_file": None,
+                        "dry_run": True,
+                        "attempts": [],
+                    },
+                }
+            return {
+                "success": False,
+                "summary": "No launch candidate found for requested app.",
+                "details": {
+                    "app_name": app_name,
+                    "normalized_query": normalized_query,
+                    "candidate_count": 0,
+                },
+            }
+
+        attempts: list[dict[str, Any]] = []
+        for index, candidate in enumerate(candidates[:MAX_APP_LAUNCH_ATTEMPTS], start=1):
+            command = [str(token) for token in candidate.get("command", []) if str(token).strip()]
+            safe, safety_reason = self._is_safe_launch_command(command)
+            attempt: dict[str, Any] = {
+                "attempt": index,
+                "source": str(candidate.get("source", "unknown")),
+                "score": int(candidate.get("score", 0)),
+                "label": str(candidate.get("label", "")),
+                "desktop_file": candidate.get("desktop_file"),
+                "command": command,
+                "safe": safe,
+            }
+            if not safe:
+                attempt["error"] = safety_reason
+                attempts.append(attempt)
+                continue
+
+            spawn = self._spawn_launch_command(command=command, dry_run=dry_run)
+            attempt.update(spawn)
+            attempts.append(attempt)
+            if bool(spawn.get("success") is True):
+                return {
+                    "success": True,
+                    "summary": "Application launch command executed.",
+                    "details": {
+                        "app_name": app_name,
+                        "normalized_query": normalized_query,
+                        "launched_command": command,
+                        "source": attempt["source"],
+                        "label": attempt["label"],
+                        "desktop_file": attempt.get("desktop_file"),
+                        "dry_run": dry_run,
+                        "attempts": attempts,
+                    },
+                }
+
+        return {
+            "success": False,
+            "summary": "All launch candidates failed for requested app.",
+            "details": {
+                "app_name": app_name,
+                "normalized_query": normalized_query,
+                "candidate_count": len(candidates),
+                "attempts": attempts,
+            },
+        }
+
+    def _discover_app_launch_candidates(
+        self,
+        app_name: str,
+        normalized_query: str,
+    ) -> list[dict[str, Any]]:
+        query_tokens = set(normalized_query.split())
+        discovered: list[dict[str, Any]] = []
+        seen_commands: set[tuple[str, ...]] = set()
+
+        for directory in DESKTOP_APPLICATION_DIRS:
+            if not directory.exists() or not directory.is_dir():
+                continue
+            for desktop_file in directory.glob("*.desktop"):
+                parsed = self._parse_desktop_entry(desktop_file)
+                if not parsed:
+                    continue
+
+                score = self._score_desktop_entry_candidate(
+                    normalized_query=normalized_query,
+                    query_tokens=query_tokens,
+                    desktop_file=desktop_file,
+                    parsed_entry=parsed,
+                )
+                if score <= 0:
+                    continue
+
+                command = self._desktop_exec_to_command(str(parsed.get("exec", "")))
+                if not command:
+                    continue
+                key = tuple(command)
+                if key in seen_commands:
+                    continue
+                seen_commands.add(key)
+                discovered.append(
+                    {
+                        "source": "desktop_entry",
+                        "score": score,
+                        "label": str(parsed.get("name", desktop_file.stem)),
+                        "desktop_file": str(desktop_file),
+                        "command": command,
+                    }
+                )
+
+        for command_name in self._candidate_command_names_from_label(app_name):
+            resolved = shutil.which(command_name)
+            if not resolved:
+                continue
+            command = [command_name]
+            key = tuple(command)
+            if key in seen_commands:
+                continue
+            seen_commands.add(key)
+            base_score = 60 if command_name == app_name.strip().lower() else 50
+            discovered.append(
+                {
+                    "source": "command_name",
+                    "score": base_score,
+                    "label": command_name,
+                    "desktop_file": None,
+                    "command": command,
+                }
+            )
+
+        discovered.sort(
+            key=lambda item: (
+                -int(item.get("score", 0)),
+                0 if item.get("source") == "command_name" else 1,
+                str(item.get("label", "")),
+            )
+        )
+        return discovered[:MAX_DESKTOP_ENTRY_CANDIDATES]
+
+    def _parse_desktop_entry(self, desktop_file: Path) -> dict[str, Any]:
+        try:
+            content = desktop_file.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            return {}
+
+        in_desktop_entry = False
+        parsed: dict[str, Any] = {"localized_names": []}
+        for raw_line in content.splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("[") and line.endswith("]"):
+                in_desktop_entry = line.lower() == "[desktop entry]"
+                continue
+            if not in_desktop_entry or "=" not in line:
+                continue
+
+            key, value = line.split("=", 1)
+            key_norm = key.strip()
+            value_norm = value.strip()
+            if key_norm == "Name":
+                parsed["name"] = value_norm
+            elif key_norm.startswith("Name["):
+                localized = parsed.get("localized_names", [])
+                if isinstance(localized, list):
+                    localized.append(value_norm)
+            elif key_norm == "GenericName":
+                parsed["generic_name"] = value_norm
+            elif key_norm == "Comment":
+                parsed["comment"] = value_norm
+            elif key_norm == "Exec":
+                parsed["exec"] = value_norm
+            elif key_norm == "Type":
+                parsed["type"] = value_norm
+            elif key_norm == "Hidden":
+                parsed["hidden"] = value_norm
+            elif key_norm == "NoDisplay":
+                parsed["no_display"] = value_norm
+
+        entry_type = str(parsed.get("type", "Application")).strip().lower()
+        hidden = str(parsed.get("hidden", "")).strip().lower() in {"1", "true", "yes"}
+        if entry_type != "application" or hidden:
+            return {}
+        if not str(parsed.get("exec", "")).strip():
+            return {}
+        return parsed
+
+    def _score_desktop_entry_candidate(
+        self,
+        normalized_query: str,
+        query_tokens: set[str],
+        desktop_file: Path,
+        parsed_entry: dict[str, Any],
+    ) -> int:
+        best_score = 0
+        labels: list[str] = [
+            str(parsed_entry.get("name", "")),
+            str(parsed_entry.get("generic_name", "")),
+            str(parsed_entry.get("comment", "")),
+            desktop_file.stem,
+        ]
+        localized_names = parsed_entry.get("localized_names", [])
+        if isinstance(localized_names, list):
+            labels.extend(str(item) for item in localized_names if isinstance(item, str))
+
+        for label in labels:
+            normalized_label = self._normalize_app_query(label)
+            if not normalized_label:
+                continue
+            if normalized_label == normalized_query:
+                best_score = max(best_score, 130)
+                continue
+            if normalized_query in normalized_label:
+                best_score = max(best_score, 105)
+                continue
+            if normalized_label in normalized_query:
+                best_score = max(best_score, 75)
+                continue
+            label_tokens = set(normalized_label.split())
+            overlap = len(query_tokens & label_tokens)
+            if overlap > 0:
+                best_score = max(best_score, 42 + overlap * 12)
+
+        stem_normalized = self._normalize_app_query(desktop_file.stem)
+        if stem_normalized == normalized_query:
+            best_score = max(best_score, 125)
+        elif stem_normalized.startswith(normalized_query):
+            best_score = max(best_score, 92)
+        return best_score
+
+    def _desktop_exec_to_command(self, exec_value: str) -> list[str]:
+        normalized = DESKTOP_EXEC_PLACEHOLDER_PATTERN.sub("", exec_value).replace("%%", "%").strip()
+        normalized = re.sub(r"\s+", " ", normalized)
+        if not normalized:
+            return []
+        try:
+            command = [token for token in shlex.split(normalized, posix=True) if token.strip()]
+        except ValueError:
+            return []
+        return command
+
+    def _normalize_app_query(self, value: str) -> str:
+        lowered = value.strip().lower()
+        lowered = lowered.replace("&", " and ")
+        lowered = re.sub(r"[\"'`“”‘’]", "", lowered)
+        lowered = re.sub(r"[^\wぁ-んァ-ン一-龥]+", " ", lowered)
+        lowered = lowered.replace("_", " ")
+        lowered = re.sub(r"\s+", " ", lowered).strip()
+        return lowered
+
+    def _candidate_command_names_from_label(self, app_name: str) -> list[str]:
+        cleaned = app_name.strip()
+        lowered = cleaned.lower()
+        candidates: set[str] = set()
+        if re.fullmatch(r"[A-Za-z0-9._+-]+", cleaned):
+            candidates.add(cleaned)
+        if re.fullmatch(r"[A-Za-z0-9._+-]+", lowered):
+            candidates.add(lowered)
+
+        ascii_tokens = re.sub(r"[^a-z0-9]+", " ", lowered).strip().split()
+        if ascii_tokens:
+            candidates.add("-".join(ascii_tokens))
+            candidates.add("_".join(ascii_tokens))
+            candidates.add("".join(ascii_tokens))
+            candidates.add(ascii_tokens[0])
+        return sorted(item for item in candidates if item)
+
+    def _launch_executable_name(self, command: list[str]) -> str:
+        if not command:
+            return ""
+        if command[0] != "env":
+            return Path(command[0]).name
+
+        index = 1
+        while index < len(command):
+            token = command[index]
+            if token.startswith("-"):
+                index += 1
+                continue
+            if "=" in token and not token.startswith("/"):
+                index += 1
+                continue
+            return Path(token).name
+        return ""
+
+    def _is_safe_launch_command(self, command: list[str]) -> tuple[bool, str]:
+        if not command:
+            return False, "launch command is empty"
+
+        for token in command:
+            if any(marker in token for marker in ("&&", "||", ";", "`")):
+                return False, "launch command contains unsafe shell control markers"
+
+        executable = self._launch_executable_name(command).strip().lower().rstrip(".,;:")
+        if not executable:
+            return False, "launch command executable could not be resolved"
+        if executable in BLOCKED_TOKENS:
+            return False, f"launch executable '{executable}' is blocked"
+        if executable in UNSAFE_LAUNCH_EXECUTABLES:
+            return False, f"launch executable '{executable}' is not allowed for app launching"
+        return True, ""
+
+    def _spawn_launch_command(self, command: list[str], dry_run: bool) -> dict[str, Any]:
+        if dry_run:
+            return {"success": True, "dry_run": True, "pid": None, "returncode": 0}
+
+        try:
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+        except OSError as error:
+            return {"success": False, "dry_run": False, "error": str(error)}
+
+        time.sleep(0.15)
+        returncode = process.poll()
+        if returncode not in {None, 0}:
+            return {
+                "success": False,
+                "dry_run": False,
+                "pid": process.pid,
+                "returncode": int(returncode),
+                "error": "process exited immediately with non-zero status",
+            }
+        return {
+            "success": True,
+            "dry_run": False,
+            "pid": process.pid,
+            "returncode": 0 if returncode is None else int(returncode),
         }
 
     def _safe_data_path(self, raw_path: Any) -> Path:

@@ -435,6 +435,8 @@ class TestCli(unittest.TestCase):
                     "Terminal",
                     "--window-index",
                     "0",
+                    "--window-match-mode",
+                    "exact",
                     "--state-path",
                     str(state_path),
                     "--log-path",
@@ -448,6 +450,7 @@ class TestCli(unittest.TestCase):
             self.assertEqual(desktop_payload["task"]["task_type"], "desktop_action")
             self.assertEqual(desktop_payload["task"]["payload"]["action"], "focus_window")
             self.assertEqual(desktop_payload["task"]["payload"]["window_title"], "Terminal")
+            self.assertEqual(desktop_payload["task"]["payload"]["window_match_mode"], "exact")
 
             mission = self.run_cli(
                 [
@@ -506,6 +509,80 @@ class TestCli(unittest.TestCase):
             run_payload = json.loads(run.stdout)
             self.assertEqual(run_payload["summary"]["queue_size"], 0)
             self.assertGreaterEqual(run_payload["summary"]["executed_count"], 3)
+
+    def test_enqueue_desktop_action_rejects_invalid_window_arguments(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+
+            unsupported = self.run_cli(
+                [
+                    "enqueue-desktop-action",
+                    "--action",
+                    "wait",
+                    "--seconds",
+                    "0.1",
+                    "--window-title",
+                    "Terminal",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                ]
+            )
+            self.assertNotEqual(unsupported.returncode, 0)
+            self.assertIn("--window-title is only supported", unsupported.stderr)
+
+            missing_title = self.run_cli(
+                [
+                    "enqueue-desktop-action",
+                    "--action",
+                    "click",
+                    "--x",
+                    "100",
+                    "--y",
+                    "200",
+                    "--window-index",
+                    "1",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                ]
+            )
+            self.assertNotEqual(missing_title.returncode, 0)
+            self.assertIn("--window-index requires --window-title", missing_title.stderr)
+
+    def test_list_windows_command_dry_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+
+            result = self.run_cli(
+                [
+                    "list-windows",
+                    "--title",
+                    "Terminal",
+                    "--match-mode",
+                    "smart",
+                    "--limit",
+                    "10",
+                    "--dry-run",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                    "--language",
+                    "en",
+                ]
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["message"], "Window candidates listed.")
+            self.assertTrue(payload["dry_run"])
+            self.assertEqual(payload["window_title"], "Terminal")
+            self.assertEqual(payload["match_mode"], "smart")
+            self.assertEqual(payload["windows"], [])
 
 
 if __name__ == "__main__":

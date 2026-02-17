@@ -16,6 +16,11 @@ from .memory import MemoryStore
 from .orchestrator import GrowingAgentOrchestrator
 from .tools.runner import CommandRunner
 
+WINDOW_TITLE_ACTIONS = {"focus_window", "hotkey", "type_text", "click", "move", "screenshot"}
+WINDOW_TITLE_REQUIRED_ACTIONS = {"focus_window"}
+TEXT_INPUT_ACTIONS = {"hotkey", "type_text"}
+WINDOW_MATCH_MODE_CHOICES = ("smart", "exact", "contains", "regex")
+
 
 def parse_language_arg(value: str) -> str:
     normalized = value.strip().lower()
@@ -61,6 +66,20 @@ def parse_steps_json(value: str) -> list[dict[str, Any]]:
 
 def build_desktop_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
     payload: dict[str, Any] = {"action": args.action}
+    window_title = str(args.window_title).strip() if isinstance(args.window_title, str) else ""
+    raw_window_index = args.window_index
+    window_match_mode = str(args.window_match_mode).strip().lower()
+    raw_focus_settle_ms = args.focus_settle_ms
+
+    if raw_window_index is not None and int(raw_window_index) < 0:
+        raise ValueError("--window-index must be >= 0")
+    if raw_window_index is not None and not window_title:
+        raise ValueError("--window-index requires --window-title")
+    if window_title and args.action not in WINDOW_TITLE_ACTIONS:
+        raise ValueError(f"--window-title is only supported for actions: {', '.join(sorted(WINDOW_TITLE_ACTIONS))}")
+    if not window_title and args.action in WINDOW_TITLE_REQUIRED_ACTIONS:
+        raise ValueError("focus_window action requires --window-title")
+
     if args.action in {"click", "move"}:
         if args.x is None or args.y is None:
             raise ValueError("click/move actions require --x and --y")
@@ -86,13 +105,17 @@ def build_desktop_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
         if args.url is None:
             raise ValueError("open_url action requires --url")
         payload["url"] = str(args.url)
-    elif args.action == "focus_window":
-        if args.window_title is None or not str(args.window_title).strip():
-            raise ValueError("focus_window action requires --window-title")
 
-    if args.window_title is not None and str(args.window_title).strip():
-        payload["window_title"] = str(args.window_title).strip()
-        payload["window_index"] = max(0, int(args.window_index))
+    if window_title:
+        payload["window_title"] = window_title
+        payload["window_index"] = max(0, int(raw_window_index or 0))
+        payload["window_match_mode"] = (
+            window_match_mode if window_match_mode in WINDOW_MATCH_MODE_CHOICES else "smart"
+        )
+        if args.action in TEXT_INPUT_ACTIONS:
+            settle_ms = 120 if raw_focus_settle_ms is None else int(raw_focus_settle_ms)
+            settle_ms = max(0, min(2000, settle_ms))
+            payload["focus_settle_seconds"] = settle_ms / 1000.0
     return payload
 
 
@@ -198,7 +221,19 @@ def build_parser() -> argparse.ArgumentParser:
     enqueue_desktop_parser.add_argument("--path")
     enqueue_desktop_parser.add_argument("--url")
     enqueue_desktop_parser.add_argument("--window-title")
-    enqueue_desktop_parser.add_argument("--window-index", type=int, default=0)
+    enqueue_desktop_parser.add_argument("--window-index", type=int)
+    enqueue_desktop_parser.add_argument(
+        "--window-match-mode",
+        choices=WINDOW_MATCH_MODE_CHOICES,
+        default="smart",
+        help="How to match window title (smart/exact/contains/regex).",
+    )
+    enqueue_desktop_parser.add_argument(
+        "--focus-settle-ms",
+        type=int,
+        default=120,
+        help="Wait time after focusing for type_text/hotkey (0-2000 ms).",
+    )
     add_language_argument(enqueue_desktop_parser)
 
     enqueue_perception_parser = subparsers.add_parser(
@@ -264,6 +299,23 @@ def build_parser() -> argparse.ArgumentParser:
     )
     autonomy_status_parser.add_argument("--state-path", default="data/state.json")
     add_language_argument(autonomy_status_parser)
+
+    list_windows_parser = subparsers.add_parser(
+        "list-windows",
+        help="List candidate windows for reliable desktop targeting.",
+    )
+    list_windows_parser.add_argument("--state-path", default="data/state.json")
+    list_windows_parser.add_argument("--log-path", default="data/runner.log")
+    list_windows_parser.add_argument("--title", default="", help="Window title pattern.")
+    list_windows_parser.add_argument(
+        "--match-mode",
+        choices=WINDOW_MATCH_MODE_CHOICES,
+        default="smart",
+        help="Window title match mode.",
+    )
+    list_windows_parser.add_argument("--limit", type=int, default=20)
+    list_windows_parser.add_argument("--dry-run", action="store_true")
+    add_language_argument(list_windows_parser)
 
     spawn_challenges_parser = subparsers.add_parser(
         "spawn-challenges",
@@ -520,6 +572,26 @@ def main() -> int:
             "fun": state.get("autonomy", {}).get("game", {}),
             "display_language": language,
             "message": translate("autonomy_status_loaded", language),
+        }
+        print(json.dumps(response, indent=2, ensure_ascii=False))
+        return 0
+
+    if args.subcommand == "list-windows":
+        worker = build_autonomous_worker_from_args(args)
+        try:
+            inspected = worker.inspect_windows(
+                title=args.title,
+                match_mode=args.match_mode,
+                limit=args.limit,
+                dry_run=args.dry_run,
+            )
+        except ValueError as error:
+            parser.error(str(error))
+        language = worker.language
+        response = {
+            **inspected,
+            "display_language": language,
+            "message": translate("desktop_windows_listed", language),
         }
         print(json.dumps(response, indent=2, ensure_ascii=False))
         return 0

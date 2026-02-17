@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, timezone
 import json
 from pathlib import Path
+import re
 import time
 from typing import Any
 from urllib.parse import urlparse
@@ -31,6 +32,11 @@ DEFAULT_AUTONOMY_ALLOWED_COMMANDS = (
     "tesseract",
 )
 LEVEL_XP_STEP = 100
+WINDOW_TARGETABLE_ACTIONS = {"focus_window", "hotkey", "type_text", "click", "move", "screenshot"}
+TEXT_INPUT_ACTIONS = {"hotkey", "type_text"}
+WINDOW_MATCH_MODES = ("smart", "exact", "contains", "regex")
+DEFAULT_FOCUS_SETTLE_SECONDS = 0.12
+MAX_FOCUS_SETTLE_SECONDS = 2.0
 
 FUN_TITLES: tuple[tuple[int, str], ...] = (
     (1, "Rookie"),
@@ -201,6 +207,54 @@ class AutonomousWorker:
             "completed_size": completed_size,
             "improvement_backlog_size": backlog_size,
             "known_task_types": sorted(learning.get("task_type_stats", {}).keys()),
+        }
+
+    def inspect_windows(
+        self,
+        title: str | None = None,
+        match_mode: str = "smart",
+        limit: int = 20,
+        dry_run: bool = False,
+    ) -> dict[str, Any]:
+        normalized_title = title.strip() if isinstance(title, str) else ""
+        safe_limit = max(1, min(200, int(limit)))
+        normalized_mode = self._normalize_window_match_mode(match_mode)
+
+        if dry_run:
+            return {
+                "success": True,
+                "summary": "Window inspection simulated (dry-run).",
+                "windows": [],
+                "window_title": normalized_title,
+                "match_mode": normalized_mode,
+                "search_plan": self._build_window_search_plan(normalized_title, normalized_mode),
+                "dry_run": True,
+            }
+
+        candidate_result = self._collect_window_candidates(
+            window_title=normalized_title,
+            match_mode=normalized_mode,
+            max_candidates=safe_limit * 3,
+        )
+        details = candidate_result.get("details", {})
+        if not isinstance(details, dict):
+            details = {}
+        matched_ids_raw = details.get("matched_window_ids", [])
+        matched_ids = [
+            str(item)
+            for item in matched_ids_raw
+            if isinstance(item, str) and item.strip()
+        ][:safe_limit]
+        windows = self._describe_windows(matched_ids, dry_run=False)
+        return {
+            "success": bool(candidate_result.get("success") is True),
+            "summary": str(candidate_result.get("summary", "")),
+            "windows": windows,
+            "window_title": normalized_title,
+            "match_mode": normalized_mode,
+            "selected_strategy": details.get("selected_strategy"),
+            "search_plan": details.get("search_plan", []),
+            "dry_run": False,
         }
 
     def run(self, cycles: int = 1, dry_run: bool = False) -> dict[str, Any]:
@@ -656,6 +710,13 @@ class AutonomousWorker:
             window_index = max(0, int(raw_window_index))
         except (TypeError, ValueError):
             window_index = 0
+        window_match_mode = self._normalize_window_match_mode(payload.get("window_match_mode"))
+
+        raw_focus_settle = payload.get("focus_settle_seconds", DEFAULT_FOCUS_SETTLE_SECONDS)
+        try:
+            focus_settle_seconds = max(0.0, min(MAX_FOCUS_SETTLE_SECONDS, float(raw_focus_settle)))
+        except (TypeError, ValueError):
+            focus_settle_seconds = DEFAULT_FOCUS_SETTLE_SECONDS
 
         if action == "wait":
             raw_seconds = payload.get("seconds", 1.0)
@@ -694,6 +755,7 @@ class AutonomousWorker:
             focus_result = self._focus_window(
                 window_title=window_title,
                 window_index=window_index,
+                match_mode=window_match_mode,
                 dry_run=dry_run,
             )
             success = bool(focus_result.get("success") is True)
@@ -710,6 +772,7 @@ class AutonomousWorker:
                 "target": window_title,
                 "window_title": window_title,
                 "window_index": window_index,
+                "window_match_mode": window_match_mode,
                 "focus": focus_details,
                 "focus_summary": str(focus_result.get("summary", "")),
             }
@@ -741,6 +804,7 @@ class AutonomousWorker:
                     details={},
                 )
             command = ["xdotool", "key", "+".join(keys)]
+            detail_target = "+".join(keys)
         elif action == "type_text":
             text = payload.get("text")
             if not isinstance(text, str) or not text:
@@ -757,6 +821,7 @@ class AutonomousWorker:
             except (TypeError, ValueError):
                 delay_ms = 12
             command = ["xdotool", "type", "--delay", str(delay_ms), text]
+            detail_target = text[:120]
         elif action == "click":
             try:
                 x = int(payload.get("x"))
@@ -775,6 +840,7 @@ class AutonomousWorker:
                 button = 1
             button = max(1, min(5, button))
             command = ["xdotool", "mousemove", str(x), str(y), "click", str(button)]
+            detail_target = f"x={x},y={y},button={button}"
         elif action == "move":
             try:
                 x = int(payload.get("x"))
@@ -788,6 +854,7 @@ class AutonomousWorker:
                     details={},
                 )
             command = ["xdotool", "mousemove", str(x), str(y)]
+            detail_target = f"x={x},y={y}"
         elif action == "screenshot":
             raw_path = payload.get("path", "data/autonomy/screenshot.png")
             try:
@@ -803,7 +870,10 @@ class AutonomousWorker:
             detail_target = str(target)
             if not dry_run:
                 target.parent.mkdir(parents=True, exist_ok=True)
-            command = ["scrot", str(target)]
+            if window_title:
+                command = ["scrot", "-u", str(target)]
+            else:
+                command = ["scrot", str(target)]
         elif action == "open_url":
             url = payload.get("url")
             if not isinstance(url, str) or not url.strip():
@@ -834,10 +904,20 @@ class AutonomousWorker:
                 details={"action": action},
             )
 
-        if window_title and action in {"hotkey", "type_text", "click", "move", "screenshot"}:
+        if window_title and action not in WINDOW_TARGETABLE_ACTIONS:
+            return self._build_result(
+                task=task,
+                success=False,
+                reward=0.0,
+                summary=f"window_title is not supported for desktop action '{action}'.",
+                details={"action": action, "window_title": window_title},
+            )
+
+        if window_title:
             focus_result = self._focus_window(
                 window_title=window_title,
                 window_index=window_index,
+                match_mode=window_match_mode,
                 dry_run=dry_run,
             )
             raw_focus_details = focus_result.get("details", {})
@@ -853,10 +933,13 @@ class AutonomousWorker:
                         "target": detail_target,
                         "window_title": window_title,
                         "window_index": window_index,
+                        "window_match_mode": window_match_mode,
                         "focus": focus_details,
                         "focus_summary": str(focus_result.get("summary", "")),
                     },
                 )
+            if action in TEXT_INPUT_ACTIONS and not dry_run and focus_settle_seconds > 0:
+                time.sleep(focus_settle_seconds)
 
         if command is None:
             return self._build_result(
@@ -868,7 +951,44 @@ class AutonomousWorker:
             )
 
         run_result = self.runner.run(command, dry_run=dry_run, timeout_seconds=30.0)
+        retry_attempted = False
+        retry_succeeded = False
+        retry_focus_details: dict[str, Any] | None = None
+        retry_run_result: dict[str, Any] | None = None
         success = bool(run_result.allowed and run_result.returncode == 0 and not run_result.timed_out)
+        if (
+            not success
+            and not dry_run
+            and window_title
+            and action in TEXT_INPUT_ACTIONS
+        ):
+            retry_attempted = True
+            second_focus = self._focus_window(
+                window_title=window_title,
+                window_index=window_index,
+                match_mode=window_match_mode,
+                dry_run=False,
+            )
+            second_focus_raw = second_focus.get("details", {})
+            retry_focus_details = second_focus_raw if isinstance(second_focus_raw, dict) else {}
+            if bool(second_focus.get("success") is True):
+                if focus_settle_seconds > 0:
+                    time.sleep(focus_settle_seconds)
+                second_run = self.runner.run(command, dry_run=False, timeout_seconds=30.0)
+                retry_run_result = {
+                    "command": second_run.command,
+                    "returncode": second_run.returncode,
+                    "allowed": second_run.allowed,
+                    "timed_out": second_run.timed_out,
+                    "duration_seconds": second_run.duration_seconds,
+                    "stdout_excerpt": second_run.stdout.strip()[:500],
+                    "stderr_excerpt": second_run.stderr.strip()[:500],
+                }
+                if bool(second_run.allowed and second_run.returncode == 0 and not second_run.timed_out):
+                    run_result = second_run
+                    success = True
+                    retry_succeeded = True
+
         reward = 1.0 if success else 0.0
         summary = f"Desktop action '{action}' succeeded." if success else f"Desktop action '{action}' failed."
         details = {
@@ -877,15 +997,23 @@ class AutonomousWorker:
             "command": run_result.command,
             "window_title": window_title if window_title else None,
             "window_index": window_index if window_title else None,
+            "window_match_mode": window_match_mode if window_title else None,
+            "focus_settle_seconds": focus_settle_seconds if (window_title and action in TEXT_INPUT_ACTIONS) else None,
             "returncode": run_result.returncode,
             "allowed": run_result.allowed,
             "timed_out": run_result.timed_out,
             "duration_seconds": run_result.duration_seconds,
             "stdout_excerpt": run_result.stdout.strip()[:500],
             "stderr_excerpt": run_result.stderr.strip()[:500],
+            "retry_attempted": retry_attempted,
+            "retry_succeeded": retry_succeeded,
         }
         if focus_details is not None:
             details["focus"] = focus_details
+        if retry_focus_details is not None:
+            details["retry_focus"] = retry_focus_details
+        if retry_run_result is not None:
+            details["retry_run"] = retry_run_result
         return self._build_result(
             task=task,
             success=success,
@@ -1621,12 +1749,179 @@ class AutonomousWorker:
                 return False
         return bool(value)
 
-    def _focus_window(self, window_title: str, window_index: int, dry_run: bool) -> dict[str, Any]:
+    def _normalize_window_match_mode(self, value: Any) -> str:
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in WINDOW_MATCH_MODES:
+                return normalized
+        return "smart"
+
+    def _build_window_search_plan(self, window_title: str, match_mode: str) -> list[dict[str, str]]:
+        normalized_title = window_title.strip()
+        normalized_mode = self._normalize_window_match_mode(match_mode)
+        if not normalized_title:
+            return [{"strategy": "all", "pattern": ".*"}]
+
+        escaped = re.escape(normalized_title)
+        exact_pattern = f"^{escaped}$"
+        contains_pattern = normalized_title
+        regex_pattern = normalized_title
+
+        if normalized_mode == "exact":
+            return [{"strategy": "exact", "pattern": exact_pattern}]
+        if normalized_mode == "contains":
+            return [{"strategy": "contains", "pattern": contains_pattern}]
+        if normalized_mode == "regex":
+            return [{"strategy": "regex", "pattern": regex_pattern}]
+        # smart: strict exact first, then broader contains match.
+        return [
+            {"strategy": "exact", "pattern": exact_pattern},
+            {"strategy": "contains", "pattern": contains_pattern},
+        ]
+
+    def _search_window_ids(
+        self,
+        pattern: str,
+        max_candidates: int = 200,
+        dry_run: bool = False,
+    ) -> dict[str, Any]:
+        result = self.runner.run(
+            ["xdotool", "search", "--name", pattern],
+            dry_run=dry_run,
+            timeout_seconds=30.0,
+        )
+        tokens = [
+            line.strip()
+            for line in result.stdout.splitlines()
+            if line.strip()
+        ]
+
+        deduped: list[str] = []
+        seen: set[str] = set()
+        for token in tokens:
+            if token in seen:
+                continue
+            seen.add(token)
+            deduped.append(token)
+
+        numeric: list[tuple[int, str]] = []
+        non_numeric: list[str] = []
+        for token in deduped:
+            try:
+                numeric.append((int(token), token))
+            except ValueError:
+                non_numeric.append(token)
+        numeric.sort(key=lambda item: item[0])
+        ordered = [item[1] for item in numeric] + sorted(non_numeric)
+        ordered = ordered[: max(1, int(max_candidates))]
+
+        success = bool(result.allowed and result.returncode == 0 and not result.timed_out and bool(ordered))
+        return {
+            "success": success,
+            "matched_window_ids": ordered,
+            "returncode": result.returncode,
+            "allowed": result.allowed,
+            "timed_out": result.timed_out,
+            "stdout_excerpt": result.stdout.strip()[:500],
+            "stderr_excerpt": result.stderr.strip()[:500],
+        }
+
+    def _collect_window_candidates(
+        self,
+        window_title: str,
+        match_mode: str,
+        max_candidates: int = 200,
+    ) -> dict[str, Any]:
+        search_plan = self._build_window_search_plan(window_title, match_mode)
+        attempts: list[dict[str, Any]] = []
+        for plan_item in search_plan:
+            strategy = str(plan_item.get("strategy", "unknown"))
+            pattern = str(plan_item.get("pattern", ""))
+            search = self._search_window_ids(pattern, max_candidates=max_candidates, dry_run=False)
+            attempts.append(
+                {
+                    "strategy": strategy,
+                    "pattern": pattern,
+                    "success": bool(search["success"]),
+                    "matched_count": len(search["matched_window_ids"]),
+                    "returncode": search["returncode"],
+                    "allowed": search["allowed"],
+                    "timed_out": search["timed_out"],
+                }
+            )
+            if bool(search["success"]):
+                return {
+                    "success": True,
+                    "summary": "Window candidates resolved.",
+                    "details": {
+                        "selected_strategy": strategy,
+                        "search_pattern": pattern,
+                        "search_plan": search_plan,
+                        "search_attempts": attempts,
+                        "matched_count": len(search["matched_window_ids"]),
+                        "matched_window_ids": search["matched_window_ids"],
+                        "search_returncode": search["returncode"],
+                        "search_allowed": search["allowed"],
+                        "search_timed_out": search["timed_out"],
+                        "search_stdout_excerpt": search["stdout_excerpt"],
+                        "search_stderr_excerpt": search["stderr_excerpt"],
+                    },
+                }
+
+        last_attempt = attempts[-1] if attempts else {}
+        return {
+            "success": False,
+            "summary": "No matching window found for window_title.",
+            "details": {
+                "window_title": window_title,
+                "search_plan": search_plan,
+                "search_attempts": attempts,
+                "selected_strategy": last_attempt.get("strategy"),
+                "search_pattern": last_attempt.get("pattern"),
+                "search_returncode": last_attempt.get("returncode"),
+                "search_allowed": last_attempt.get("allowed"),
+                "search_timed_out": last_attempt.get("timed_out"),
+                "matched_count": int(last_attempt.get("matched_count", 0) or 0),
+                "matched_window_ids": [],
+            },
+        }
+
+    def _describe_windows(self, window_ids: list[str], dry_run: bool) -> list[dict[str, Any]]:
+        if dry_run:
+            return [{"window_id": item, "title": "(dry-run)", "title_lookup_ok": True} for item in window_ids]
+
+        windows: list[dict[str, Any]] = []
+        for window_id in window_ids:
+            name_result = self.runner.run(
+                ["xdotool", "getwindowname", str(window_id)],
+                dry_run=False,
+                timeout_seconds=10.0,
+            )
+            title = name_result.stdout.strip().splitlines()
+            windows.append(
+                {
+                    "window_id": str(window_id),
+                    "title": title[0] if title else "",
+                    "title_lookup_ok": bool(
+                        name_result.allowed and name_result.returncode == 0 and not name_result.timed_out
+                    ),
+                }
+            )
+        return windows
+
+    def _focus_window(
+        self,
+        window_title: str,
+        window_index: int,
+        match_mode: str,
+        dry_run: bool,
+    ) -> dict[str, Any]:
         normalized_title = window_title.strip()
         try:
             safe_index = max(0, int(window_index))
         except (TypeError, ValueError):
             safe_index = 0
+        normalized_mode = self._normalize_window_match_mode(match_mode)
 
         if not normalized_title:
             return {
@@ -1642,44 +1937,40 @@ class AutonomousWorker:
                 "details": {
                     "window_title": normalized_title,
                     "window_index": safe_index,
+                    "window_match_mode": normalized_mode,
                     "window_id": "dry-run-window",
+                    "search_plan": self._build_window_search_plan(normalized_title, normalized_mode),
                     "matched_window_ids": [],
                     "dry_run": True,
                 },
             }
 
-        search_result = self.runner.run(
-            ["xdotool", "search", "--name", normalized_title],
-            dry_run=False,
-            timeout_seconds=30.0,
+        candidate_result = self._collect_window_candidates(
+            window_title=normalized_title,
+            match_mode=normalized_mode,
+            max_candidates=200,
         )
-        matched_window_ids = [
-            line.strip()
-            for line in search_result.stdout.splitlines()
-            if line.strip()
-        ]
-        search_success = bool(
-            search_result.allowed
-            and search_result.returncode == 0
-            and not search_result.timed_out
-            and matched_window_ids
-        )
-        if not search_success:
+        candidate_details = candidate_result.get("details", {})
+        if not isinstance(candidate_details, dict):
+            candidate_details = {}
+        if not bool(candidate_result.get("success") is True):
             return {
                 "success": False,
-                "summary": "No matching window found for window_title.",
+                "summary": str(candidate_result.get("summary", "No matching window found for window_title.")),
                 "details": {
+                    **candidate_details,
                     "window_title": normalized_title,
                     "window_index": safe_index,
-                    "search_returncode": search_result.returncode,
-                    "search_allowed": search_result.allowed,
-                    "search_timed_out": search_result.timed_out,
-                    "search_stdout_excerpt": search_result.stdout.strip()[:500],
-                    "search_stderr_excerpt": search_result.stderr.strip()[:500],
-                    "matched_window_ids": matched_window_ids[:10],
+                    "window_match_mode": normalized_mode,
                 },
             }
 
+        matched_window_ids_raw = candidate_details.get("matched_window_ids", [])
+        matched_window_ids = [
+            str(item)
+            for item in matched_window_ids_raw
+            if isinstance(item, str) and item.strip()
+        ]
         if safe_index >= len(matched_window_ids):
             return {
                 "success": False,
@@ -1687,49 +1978,97 @@ class AutonomousWorker:
                 "details": {
                     "window_title": normalized_title,
                     "window_index": safe_index,
+                    "window_match_mode": normalized_mode,
                     "matched_count": len(matched_window_ids),
                     "matched_window_ids": matched_window_ids[:10],
+                    "search_plan": candidate_details.get("search_plan", []),
                 },
             }
 
         selected_window_id = matched_window_ids[safe_index]
-        activate_result = self.runner.run(
-            ["xdotool", "windowactivate", "--sync", selected_window_id],
-            dry_run=False,
-            timeout_seconds=30.0,
-        )
-        activate_success = bool(
-            activate_result.allowed
-            and activate_result.returncode == 0
-            and not activate_result.timed_out
-        )
-        if not activate_success:
-            return {
-                "success": False,
-                "summary": "Window activation failed.",
-                "details": {
-                    "window_title": normalized_title,
-                    "window_index": safe_index,
-                    "window_id": selected_window_id,
-                    "matched_window_ids": matched_window_ids[:10],
+        activation_attempts: list[dict[str, Any]] = []
+        active_window_id = ""
+        activation_verified = False
+        for attempt in range(1, 3):
+            activate_result = self.runner.run(
+                ["xdotool", "windowactivate", "--sync", selected_window_id],
+                dry_run=False,
+                timeout_seconds=30.0,
+            )
+            active_result = self.runner.run(
+                ["xdotool", "getactivewindow"],
+                dry_run=False,
+                timeout_seconds=10.0,
+            )
+            active_window_lines = [line.strip() for line in active_result.stdout.splitlines() if line.strip()]
+            active_window_id = active_window_lines[0] if active_window_lines else ""
+
+            activate_success = bool(
+                activate_result.allowed
+                and activate_result.returncode == 0
+                and not activate_result.timed_out
+            )
+            active_success = bool(
+                active_result.allowed
+                and active_result.returncode == 0
+                and not active_result.timed_out
+                and bool(active_window_id)
+            )
+            matched_active = bool(active_success and active_window_id == selected_window_id)
+            activation_attempts.append(
+                {
+                    "attempt": attempt,
                     "activate_returncode": activate_result.returncode,
                     "activate_allowed": activate_result.allowed,
                     "activate_timed_out": activate_result.timed_out,
-                    "activate_stdout_excerpt": activate_result.stdout.strip()[:500],
-                    "activate_stderr_excerpt": activate_result.stderr.strip()[:500],
+                    "activate_stdout_excerpt": activate_result.stdout.strip()[:200],
+                    "activate_stderr_excerpt": activate_result.stderr.strip()[:200],
+                    "active_window_id": active_window_id,
+                    "active_returncode": active_result.returncode,
+                    "active_allowed": active_result.allowed,
+                    "active_timed_out": active_result.timed_out,
+                    "active_stdout_excerpt": active_result.stdout.strip()[:200],
+                    "active_stderr_excerpt": active_result.stderr.strip()[:200],
+                    "active_match": matched_active,
+                }
+            )
+            if activate_success and matched_active:
+                activation_verified = True
+                break
+
+        if not activation_verified:
+            return {
+                "success": False,
+                "summary": "Window activation failed or could not be verified.",
+                "details": {
+                    "window_title": normalized_title,
+                    "window_index": safe_index,
+                    "window_match_mode": normalized_mode,
+                    "window_id": selected_window_id,
+                    "matched_window_ids": matched_window_ids[:10],
+                    "search_plan": candidate_details.get("search_plan", []),
+                    "selected_strategy": candidate_details.get("selected_strategy"),
+                    "activation_attempts": activation_attempts,
+                    "active_window_id": active_window_id,
                 },
             }
 
+        matched_windows = self._describe_windows(matched_window_ids[:10], dry_run=False)
         return {
             "success": True,
             "summary": "Window focus completed.",
             "details": {
                 "window_title": normalized_title,
                 "window_index": safe_index,
+                "window_match_mode": normalized_mode,
                 "window_id": selected_window_id,
                 "matched_count": len(matched_window_ids),
                 "matched_window_ids": matched_window_ids[:10],
-                "activate_duration_seconds": activate_result.duration_seconds,
+                "matched_windows": matched_windows,
+                "selected_strategy": candidate_details.get("selected_strategy"),
+                "search_plan": candidate_details.get("search_plan", []),
+                "activation_attempts": activation_attempts,
+                "active_window_id": active_window_id,
             },
         }
 

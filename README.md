@@ -74,8 +74,11 @@ python3 -m growing_agent enqueue-desktop-action --action type_text --text "hello
 # Focus a target app window by title
 python3 -m growing_agent enqueue-desktop-action --action focus_window --window-title "Terminal"
 
+# List candidate windows before targeting
+python3 -m growing_agent list-windows --title "Terminal" --match-mode smart
+
 # Type into a specific window (focuses first)
-python3 -m growing_agent enqueue-desktop-action --action type_text --text "hello world" --window-title "Terminal"
+python3 -m growing_agent enqueue-desktop-action --action type_text --text "hello world" --window-title "Terminal" --window-match-mode exact --focus-settle-ms 150
 
 # Queue a desktop hotkey action
 python3 -m growing_agent enqueue-desktop-action --action hotkey --keys ctrl l
@@ -187,8 +190,11 @@ python3 -m growing_agent enqueue-desktop-action --action wait --seconds 0.5
 # Queue desktop window focus action
 python3 -m growing_agent enqueue-desktop-action --action focus_window --window-title "Terminal"
 
+# Inspect window candidates for deterministic targeting
+python3 -m growing_agent list-windows --title "Terminal" --match-mode smart --limit 20
+
 # Queue desktop action with target window focus
-python3 -m growing_agent enqueue-desktop-action --action type_text --text "hello" --window-title "Terminal"
+python3 -m growing_agent enqueue-desktop-action --action type_text --text "hello" --window-title "Terminal" --window-match-mode exact --focus-settle-ms 150
 
 # Queue desktop perception
 python3 -m growing_agent enqueue-desktop-perception --path data/autonomy/snapshot.png

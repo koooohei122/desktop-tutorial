@@ -258,6 +258,8 @@ class TestAutonomyWorker(unittest.TestCase):
                     "text": "hello",
                     "window_title": "Terminal",
                     "window_index": 1,
+                    "window_match_mode": "exact",
+                    "focus_settle_seconds": 0.25,
                 },
                 priority=6,
             )
@@ -267,8 +269,71 @@ class TestAutonomyWorker(unittest.TestCase):
             self.assertTrue(action_result["success"])
             self.assertEqual(action_result["details"]["window_title"], "Terminal")
             self.assertEqual(action_result["details"]["window_index"], 1)
+            self.assertEqual(action_result["details"]["window_match_mode"], "exact")
             self.assertIn("focus", action_result["details"])
             self.assertTrue(action_result["details"]["focus"]["dry_run"])
+            self.assertAlmostEqual(float(action_result["details"]["focus_settle_seconds"]), 0.25, places=3)
+
+    def test_desktop_action_open_url_rejects_window_target(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+            memory = MemoryStore(state_path)
+            runner = CommandRunner(
+                allowed_commands={"xdg-open", "xdotool"},
+                log_path=log_path,
+            )
+            worker = AutonomousWorker(
+                memory=memory,
+                runner=runner,
+                language="en",
+                workspace_root=tmpdir,
+            )
+
+            worker.enqueue(
+                task_type="desktop_action",
+                title="open url with invalid target",
+                payload={
+                    "action": "open_url",
+                    "url": "https://example.com",
+                    "window_title": "Terminal",
+                },
+                priority=6,
+            )
+            result = worker.run(cycles=1, dry_run=True)
+            action_result = result["executed"][0]
+            self.assertFalse(action_result["success"])
+            self.assertIn("not supported", action_result["summary"])
+            self.assertEqual(action_result["details"]["action"], "open_url")
+
+    def test_inspect_windows_dry_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+            memory = MemoryStore(state_path)
+            runner = CommandRunner(
+                allowed_commands={"xdotool"},
+                log_path=log_path,
+            )
+            worker = AutonomousWorker(
+                memory=memory,
+                runner=runner,
+                language="en",
+                workspace_root=tmpdir,
+            )
+
+            inspected = worker.inspect_windows(
+                title="Terminal",
+                match_mode="smart",
+                limit=25,
+                dry_run=True,
+            )
+            self.assertTrue(inspected["success"])
+            self.assertTrue(inspected["dry_run"])
+            self.assertEqual(inspected["match_mode"], "smart")
+            self.assertEqual(inspected["window_title"], "Terminal")
+            self.assertEqual(inspected["windows"], [])
+            self.assertGreaterEqual(len(inspected["search_plan"]), 1)
 
     def test_desktop_perception_task(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

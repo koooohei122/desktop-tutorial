@@ -74,11 +74,18 @@ python3 -m growing_agent enqueue-desktop-action --action type_text --text "hello
 # Focus a target app window by title
 python3 -m growing_agent enqueue-desktop-action --action focus_window --window-title "Terminal"
 
+# Focus by class or PID (no title needed)
+python3 -m growing_agent enqueue-desktop-action --action focus_window --window-class "gnome-terminal"
+python3 -m growing_agent enqueue-desktop-action --action focus_window --window-pid 12345
+
 # List candidate windows before targeting
-python3 -m growing_agent list-windows --title "Terminal" --match-mode smart
+python3 -m growing_agent list-windows --title "Terminal" --window-class "gnome-terminal" --match-mode smart
 
 # Type into a specific window (focuses first)
 python3 -m growing_agent enqueue-desktop-action --action type_text --text "hello world" --window-title "Terminal" --window-match-mode exact --focus-settle-ms 150
+
+# Click relative to target window top-left
+python3 -m growing_agent enqueue-desktop-action --action click --x 120 --y 48 --button 1 --window-class "gnome-terminal" --relative-to-window
 
 # Queue a desktop hotkey action
 python3 -m growing_agent enqueue-desktop-action --action hotkey --keys ctrl l
@@ -191,10 +198,14 @@ python3 -m growing_agent enqueue-desktop-action --action wait --seconds 0.5
 python3 -m growing_agent enqueue-desktop-action --action focus_window --window-title "Terminal"
 
 # Inspect window candidates for deterministic targeting
-python3 -m growing_agent list-windows --title "Terminal" --match-mode smart --limit 20
+python3 -m growing_agent list-windows --title "Terminal" --window-class "gnome-terminal" --match-mode smart --limit 20
 
 # Queue desktop action with target window focus
 python3 -m growing_agent enqueue-desktop-action --action type_text --text "hello" --window-title "Terminal" --window-match-mode exact --focus-settle-ms 150
+
+# Queue relative move/click inside focused target window
+python3 -m growing_agent enqueue-desktop-action --action move --x 20 --y 20 --window-pid 12345 --relative-to-window
+python3 -m growing_agent enqueue-desktop-action --action click --x 20 --y 20 --button 1 --window-pid 12345 --relative-to-window
 
 # Queue desktop perception
 python3 -m growing_agent enqueue-desktop-perception --path data/autonomy/snapshot.png

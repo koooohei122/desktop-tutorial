@@ -531,7 +531,7 @@ class TestCli(unittest.TestCase):
                 ]
             )
             self.assertNotEqual(unsupported.returncode, 0)
-            self.assertIn("--window-title is only supported", unsupported.stderr)
+            self.assertIn("Window selectors are only supported", unsupported.stderr)
 
             missing_title = self.run_cli(
                 [
@@ -551,7 +551,62 @@ class TestCli(unittest.TestCase):
                 ]
             )
             self.assertNotEqual(missing_title.returncode, 0)
-            self.assertIn("--window-index requires --window-title", missing_title.stderr)
+            self.assertIn("--window-index requires --window-title or --window-class or --window-pid", missing_title.stderr)
+
+            invalid_relative = self.run_cli(
+                [
+                    "enqueue-desktop-action",
+                    "--action",
+                    "type_text",
+                    "--text",
+                    "hello",
+                    "--relative-to-window",
+                    "--window-class",
+                    "gnome-terminal",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                ]
+            )
+            self.assertNotEqual(invalid_relative.returncode, 0)
+            self.assertIn("--relative-to-window is only supported for click/move actions", invalid_relative.stderr)
+
+    def test_enqueue_desktop_action_with_class_pid_and_relative_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+
+            result = self.run_cli(
+                [
+                    "enqueue-desktop-action",
+                    "--action",
+                    "click",
+                    "--x",
+                    "120",
+                    "--y",
+                    "40",
+                    "--button",
+                    "1",
+                    "--window-class",
+                    "gnome-terminal",
+                    "--window-pid",
+                    "12345",
+                    "--relative-to-window",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                    "--language",
+                    "en",
+                ]
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            payload = json.loads(result.stdout)
+            task_payload = payload["task"]["payload"]
+            self.assertEqual(task_payload["window_class"], "gnome-terminal")
+            self.assertEqual(task_payload["window_pid"], 12345)
+            self.assertTrue(task_payload["relative_to_window"])
 
     def test_list_windows_command_dry_run(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -563,6 +618,10 @@ class TestCli(unittest.TestCase):
                     "list-windows",
                     "--title",
                     "Terminal",
+                    "--window-class",
+                    "gnome-terminal",
+                    "--window-pid",
+                    "12345",
                     "--match-mode",
                     "smart",
                     "--limit",
@@ -581,6 +640,8 @@ class TestCli(unittest.TestCase):
             self.assertEqual(payload["message"], "Window candidates listed.")
             self.assertTrue(payload["dry_run"])
             self.assertEqual(payload["window_title"], "Terminal")
+            self.assertEqual(payload["window_class"], "gnome-terminal")
+            self.assertEqual(payload["window_pid"], 12345)
             self.assertEqual(payload["match_mode"], "smart")
             self.assertEqual(payload["windows"], [])
 

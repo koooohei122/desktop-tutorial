@@ -19,6 +19,7 @@ from .tools.runner import CommandRunner
 WINDOW_TITLE_ACTIONS = {"focus_window", "hotkey", "type_text", "click", "move", "screenshot"}
 WINDOW_TITLE_REQUIRED_ACTIONS = {"focus_window"}
 TEXT_INPUT_ACTIONS = {"hotkey", "type_text"}
+RELATIVE_COORDINATE_ACTIONS = {"click", "move"}
 WINDOW_MATCH_MODE_CHOICES = ("smart", "exact", "contains", "regex")
 
 
@@ -67,18 +68,40 @@ def parse_steps_json(value: str) -> list[dict[str, Any]]:
 def build_desktop_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
     payload: dict[str, Any] = {"action": args.action}
     window_title = str(args.window_title).strip() if isinstance(args.window_title, str) else ""
+    window_class = str(args.window_class).strip() if isinstance(args.window_class, str) else ""
+    window_pid: int | None = None
+    raw_window_pid = args.window_pid
+    if raw_window_pid is not None:
+        try:
+            parsed_pid = int(raw_window_pid)
+        except (TypeError, ValueError) as error:
+            raise ValueError("--window-pid must be a positive integer") from error
+        if parsed_pid <= 0:
+            raise ValueError("--window-pid must be a positive integer")
+        window_pid = parsed_pid
+    has_window_selector = bool(window_title or window_class or window_pid is not None)
+
     raw_window_index = args.window_index
     window_match_mode = str(args.window_match_mode).strip().lower()
     raw_focus_settle_ms = args.focus_settle_ms
+    relative_to_window = bool(args.relative_to_window)
 
     if raw_window_index is not None and int(raw_window_index) < 0:
         raise ValueError("--window-index must be >= 0")
-    if raw_window_index is not None and not window_title:
-        raise ValueError("--window-index requires --window-title")
-    if window_title and args.action not in WINDOW_TITLE_ACTIONS:
-        raise ValueError(f"--window-title is only supported for actions: {', '.join(sorted(WINDOW_TITLE_ACTIONS))}")
-    if not window_title and args.action in WINDOW_TITLE_REQUIRED_ACTIONS:
-        raise ValueError("focus_window action requires --window-title")
+    if raw_window_index is not None and not has_window_selector:
+        raise ValueError("--window-index requires --window-title or --window-class or --window-pid")
+    if has_window_selector and args.action not in WINDOW_TITLE_ACTIONS:
+        raise ValueError(
+            f"Window selectors are only supported for actions: {', '.join(sorted(WINDOW_TITLE_ACTIONS))}"
+        )
+    if not has_window_selector and args.action in WINDOW_TITLE_REQUIRED_ACTIONS:
+        raise ValueError("focus_window action requires --window-title or --window-class or --window-pid")
+    if window_match_mode != "smart" and not window_title:
+        raise ValueError("--window-match-mode requires --window-title")
+    if relative_to_window and args.action not in RELATIVE_COORDINATE_ACTIONS:
+        raise ValueError("--relative-to-window is only supported for click/move actions")
+    if relative_to_window and not has_window_selector:
+        raise ValueError("--relative-to-window requires --window-title or --window-class or --window-pid")
 
     if args.action in {"click", "move"}:
         if args.x is None or args.y is None:
@@ -106,16 +129,24 @@ def build_desktop_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
             raise ValueError("open_url action requires --url")
         payload["url"] = str(args.url)
 
-    if window_title:
-        payload["window_title"] = window_title
+    if has_window_selector:
+        if window_title:
+            payload["window_title"] = window_title
+        if window_class:
+            payload["window_class"] = window_class
+        if window_pid is not None:
+            payload["window_pid"] = window_pid
         payload["window_index"] = max(0, int(raw_window_index or 0))
-        payload["window_match_mode"] = (
-            window_match_mode if window_match_mode in WINDOW_MATCH_MODE_CHOICES else "smart"
-        )
+        if window_title:
+            payload["window_match_mode"] = (
+                window_match_mode if window_match_mode in WINDOW_MATCH_MODE_CHOICES else "smart"
+            )
         if args.action in TEXT_INPUT_ACTIONS:
             settle_ms = 120 if raw_focus_settle_ms is None else int(raw_focus_settle_ms)
             settle_ms = max(0, min(2000, settle_ms))
             payload["focus_settle_seconds"] = settle_ms / 1000.0
+    if relative_to_window:
+        payload["relative_to_window"] = True
     return payload
 
 
@@ -221,6 +252,8 @@ def build_parser() -> argparse.ArgumentParser:
     enqueue_desktop_parser.add_argument("--path")
     enqueue_desktop_parser.add_argument("--url")
     enqueue_desktop_parser.add_argument("--window-title")
+    enqueue_desktop_parser.add_argument("--window-class")
+    enqueue_desktop_parser.add_argument("--window-pid", type=int)
     enqueue_desktop_parser.add_argument("--window-index", type=int)
     enqueue_desktop_parser.add_argument(
         "--window-match-mode",
@@ -233,6 +266,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=120,
         help="Wait time after focusing for type_text/hotkey (0-2000 ms).",
+    )
+    enqueue_desktop_parser.add_argument(
+        "--relative-to-window",
+        action="store_true",
+        help="Interpret x/y as offsets from focused window's top-left (click/move only).",
     )
     add_language_argument(enqueue_desktop_parser)
 
@@ -307,6 +345,8 @@ def build_parser() -> argparse.ArgumentParser:
     list_windows_parser.add_argument("--state-path", default="data/state.json")
     list_windows_parser.add_argument("--log-path", default="data/runner.log")
     list_windows_parser.add_argument("--title", default="", help="Window title pattern.")
+    list_windows_parser.add_argument("--window-class", default="", help="Filter by window class.")
+    list_windows_parser.add_argument("--window-pid", type=int, help="Filter by owning PID.")
     list_windows_parser.add_argument(
         "--match-mode",
         choices=WINDOW_MATCH_MODE_CHOICES,
@@ -579,8 +619,12 @@ def main() -> int:
     if args.subcommand == "list-windows":
         worker = build_autonomous_worker_from_args(args)
         try:
+            if args.window_pid is not None and int(args.window_pid) <= 0:
+                raise ValueError("--window-pid must be a positive integer")
             inspected = worker.inspect_windows(
                 title=args.title,
+                window_class=args.window_class,
+                window_pid=args.window_pid,
                 match_mode=args.match_mode,
                 limit=args.limit,
                 dry_run=args.dry_run,

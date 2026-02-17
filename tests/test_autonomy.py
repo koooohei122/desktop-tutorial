@@ -234,6 +234,36 @@ class TestAutonomyWorker(unittest.TestCase):
             self.assertFalse(action_result["success"])
             self.assertIn("window_title", action_result["summary"])
 
+    def test_desktop_action_focus_window_with_class_selector(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+            memory = MemoryStore(state_path)
+            runner = CommandRunner(
+                allowed_commands={"xdotool"},
+                log_path=log_path,
+            )
+            worker = AutonomousWorker(
+                memory=memory,
+                runner=runner,
+                language="en",
+                workspace_root=tmpdir,
+            )
+
+            worker.enqueue(
+                task_type="desktop_action",
+                title="focus by class",
+                payload={"action": "focus_window", "window_class": "gnome-terminal"},
+                priority=6,
+            )
+            result = worker.run(cycles=1, dry_run=True)
+            self.assertEqual(result["summary"]["executed_count"], 1)
+            action_result = result["executed"][0]
+            self.assertTrue(action_result["success"])
+            self.assertEqual(action_result["details"]["window_class"], "gnome-terminal")
+            self.assertIsNone(action_result["details"]["window_title"])
+            self.assertIn("focus", action_result["details"])
+
     def test_desktop_action_type_text_with_window_target(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             state_path = Path(tmpdir) / "state.json"
@@ -273,6 +303,76 @@ class TestAutonomyWorker(unittest.TestCase):
             self.assertIn("focus", action_result["details"])
             self.assertTrue(action_result["details"]["focus"]["dry_run"])
             self.assertAlmostEqual(float(action_result["details"]["focus_settle_seconds"]), 0.25, places=3)
+
+    def test_desktop_action_relative_click_with_window_selector(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+            memory = MemoryStore(state_path)
+            runner = CommandRunner(
+                allowed_commands={"xdotool"},
+                log_path=log_path,
+            )
+            worker = AutonomousWorker(
+                memory=memory,
+                runner=runner,
+                language="en",
+                workspace_root=tmpdir,
+            )
+
+            worker.enqueue(
+                task_type="desktop_action",
+                title="relative click",
+                payload={
+                    "action": "click",
+                    "x": 120,
+                    "y": 40,
+                    "button": 1,
+                    "window_class": "gnome-terminal",
+                    "relative_to_window": True,
+                },
+                priority=6,
+            )
+            result = worker.run(cycles=1, dry_run=True)
+            action_result = result["executed"][0]
+            self.assertTrue(action_result["success"])
+            self.assertTrue(action_result["details"]["relative_to_window"])
+            self.assertIn("relative_coordinates", action_result["details"])
+            self.assertEqual(action_result["details"]["relative_coordinates"]["absolute_x"], 120)
+            self.assertEqual(action_result["details"]["relative_coordinates"]["absolute_y"], 40)
+            self.assertEqual(action_result["details"]["window_class"], "gnome-terminal")
+
+    def test_desktop_action_relative_click_requires_selector(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+            memory = MemoryStore(state_path)
+            runner = CommandRunner(
+                allowed_commands={"xdotool"},
+                log_path=log_path,
+            )
+            worker = AutonomousWorker(
+                memory=memory,
+                runner=runner,
+                language="en",
+                workspace_root=tmpdir,
+            )
+
+            worker.enqueue(
+                task_type="desktop_action",
+                title="relative click invalid",
+                payload={
+                    "action": "click",
+                    "x": 10,
+                    "y": 10,
+                    "relative_to_window": True,
+                },
+                priority=6,
+            )
+            result = worker.run(cycles=1, dry_run=True)
+            action_result = result["executed"][0]
+            self.assertFalse(action_result["success"])
+            self.assertIn("requires window_title", action_result["summary"])
 
     def test_desktop_action_open_url_rejects_window_target(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -324,6 +424,8 @@ class TestAutonomyWorker(unittest.TestCase):
 
             inspected = worker.inspect_windows(
                 title="Terminal",
+                window_class="gnome-terminal",
+                window_pid=12345,
                 match_mode="smart",
                 limit=25,
                 dry_run=True,
@@ -332,6 +434,8 @@ class TestAutonomyWorker(unittest.TestCase):
             self.assertTrue(inspected["dry_run"])
             self.assertEqual(inspected["match_mode"], "smart")
             self.assertEqual(inspected["window_title"], "Terminal")
+            self.assertEqual(inspected["window_class"], "gnome-terminal")
+            self.assertEqual(inspected["window_pid"], 12345)
             self.assertEqual(inspected["windows"], [])
             self.assertGreaterEqual(len(inspected["search_plan"]), 1)
 

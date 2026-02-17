@@ -14,6 +14,7 @@ from .config import AgentConfig
 from .i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, translate
 from .memory import MemoryStore
 from .orchestrator import GrowingAgentOrchestrator
+from .prompt_planner import plan_prompt_task
 from .tools.runner import CommandRunner
 
 WINDOW_TITLE_ACTIONS = {"focus_window", "hotkey", "type_text", "click", "move", "screenshot"}
@@ -331,6 +332,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     add_language_argument(run_autonomy_parser)
 
+    run_prompt_parser = subparsers.add_parser(
+        "run-prompt",
+        help="Plan a natural-language prompt into a mission and execute it.",
+    )
+    run_prompt_parser.add_argument("--prompt", required=True)
+    run_prompt_parser.add_argument("--state-path", default="data/state.json")
+    run_prompt_parser.add_argument("--log-path", default="data/runner.log")
+    run_prompt_parser.add_argument("--priority", type=int, default=8)
+    run_prompt_parser.add_argument("--cycles", type=int, default=3)
+    run_prompt_parser.add_argument("--dry-run", action="store_true")
+    run_prompt_parser.add_argument(
+        "--allow-command",
+        action="append",
+        default=None,
+        help="Extra allowlisted command for prompt-generated command steps.",
+    )
+    add_language_argument(run_prompt_parser)
+
     autonomy_status_parser = subparsers.add_parser(
         "autonomy-status",
         help="Show autonomous queue/learning status.",
@@ -599,6 +618,42 @@ def main() -> int:
             "moment": build_fun_moment(result["summary"], language),
             "display_language": language,
             "message": translate("autonomy_run_completed", language),
+        }
+        print(json.dumps(response, indent=2, ensure_ascii=False))
+        return 0
+
+    if args.subcommand == "run-prompt":
+        worker = build_autonomous_worker_from_args(args)
+        try:
+            planned = plan_prompt_task(prompt=args.prompt, priority=args.priority)
+            task = worker.enqueue(
+                task_type=str(planned["task_type"]),
+                title=str(planned["title"]),
+                payload=planned.get("payload", {}),
+                priority=int(planned["priority"]),
+            )
+            result = worker.run(cycles=max(1, int(args.cycles)), dry_run=args.dry_run)
+        except ValueError as error:
+            parser.error(str(error))
+        state = result["state"]
+        language = str(state.get("language", worker.language))
+        response = {
+            "prompt": args.prompt,
+            "planned": {
+                "intent": planned.get("intent"),
+                "task_type": planned.get("task_type"),
+                "title": planned.get("title"),
+                "priority": planned.get("priority"),
+                "preview": planned.get("preview", {}),
+            },
+            "task": task,
+            "summary": result["summary"],
+            "executed": result["executed"],
+            "autonomy": state.get("autonomy", {}),
+            "fun": state.get("autonomy", {}).get("game", {}),
+            "moment": build_fun_moment(result["summary"], language),
+            "display_language": language,
+            "message": translate("prompt_run_completed", language),
         }
         print(json.dumps(response, indent=2, ensure_ascii=False))
         return 0

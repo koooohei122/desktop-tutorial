@@ -645,6 +645,59 @@ class TestCli(unittest.TestCase):
             self.assertEqual(payload["match_mode"], "smart")
             self.assertEqual(payload["windows"], [])
 
+    def test_run_prompt_command_japanese_example(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+
+            result = self.run_cli(
+                [
+                    "run-prompt",
+                    "--prompt",
+                    "google chromeを開いて、今日におすすめな曲をyoutubeで流して",
+                    "--priority",
+                    "9",
+                    "--cycles",
+                    "2",
+                    "--dry-run",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                    "--language",
+                    "en",
+                ]
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["message"], "Prompt mission planned and executed.")
+            self.assertEqual(payload["planned"]["intent"], "youtube_music_recommendation")
+            self.assertEqual(payload["task"]["task_type"], "mission")
+            self.assertEqual(payload["summary"]["executed_count"], 1)
+            self.assertEqual(payload["executed"][0]["task_type"], "mission")
+            mission_steps = payload["task"]["payload"]["steps"]
+            self.assertEqual(mission_steps[0]["task_type"], "command")
+            self.assertEqual(mission_steps[0]["payload"]["command"][0], "google-chrome")
+
+    def test_run_prompt_rejects_unsupported_intent(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+            result = self.run_cli(
+                [
+                    "run-prompt",
+                    "--prompt",
+                    "状態を確認して",
+                    "--dry-run",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                ]
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Unsupported prompt intent", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

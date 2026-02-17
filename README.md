@@ -71,6 +71,9 @@ You can queue GUI-like actions and multi-step missions:
 # Queue a desktop typing action
 python3 -m growing_agent enqueue-desktop-action --action type_text --text "hello world"
 
+# Plan and run a natural-language prompt (example: Chrome + YouTube music)
+python3 -m growing_agent run-prompt --prompt "google chromeを開いて、今日におすすめな曲をyoutubeで流して" --cycles 2
+
 # Focus a target app window by title
 python3 -m growing_agent enqueue-desktop-action --action focus_window --window-title "Terminal"
 
@@ -212,6 +215,9 @@ python3 -m growing_agent enqueue-desktop-perception --path data/autonomy/snapsho
 
 # Queue mission task
 python3 -m growing_agent enqueue-mission --title "mission 1" --steps-json '[{"task_type":"write_note","payload":{"path":"data/autonomy/notes.md","text":"hello"}}]'
+
+# Plan and execute natural-language prompt mission
+python3 -m growing_agent run-prompt --prompt "open Google Chrome and play recommended songs on YouTube" --dry-run
 
 # Reset state file
 python3 -m growing_agent reset

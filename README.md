@@ -40,6 +40,29 @@ Learning behavior:
 - reprioritizes queued tasks using learned reward history
 - auto-queues follow-up `analyze_state` tasks for failed executions
 
+## Fun mode (gamified autonomy)
+
+`growing_agent` now tracks playful progression for autonomous work:
+
+- XP and levels
+- streak days
+- badges
+- challenge packs
+- run moments (level-up, badge unlock, clean run feedback)
+
+Use these commands:
+
+```bash
+# Create challenge tasks
+python3 -m growing_agent spawn-challenges --count 3 --language en
+
+# Run challenges and see fun moment feedback
+python3 -m growing_agent run-autonomy --cycles 3 --dry-run --language en
+
+# Show XP/level/badges status
+python3 -m growing_agent fun-status --language en
+```
+
 ## Launch-ready additions
 
 - MIT license (`LICENSE`)
@@ -119,6 +142,12 @@ python3 -m growing_agent run-autonomy --cycles 3 --dry-run
 # Inspect autonomy queue/learning state
 python3 -m growing_agent autonomy-status
 
+# Generate fun challenge tasks
+python3 -m growing_agent spawn-challenges --count 3
+
+# Inspect XP/level/badges
+python3 -m growing_agent fun-status
+
 # Reset state file
 python3 -m growing_agent reset
 ```
@@ -147,3 +176,4 @@ After execution:
 - command logs are appended to `data/runner.log`
 - each history entry keeps `stdout_excerpt` / `stderr_excerpt` for quick diagnostics
 - autonomy queue/results/learning are persisted in `state["autonomy"]`
+- fun progression is persisted in `state["autonomy"]["game"]`

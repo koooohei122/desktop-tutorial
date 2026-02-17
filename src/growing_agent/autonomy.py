@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import json
 from pathlib import Path
 from typing import Any
@@ -12,6 +12,54 @@ from .tools.runner import CommandRunner
 
 SUPPORTED_AUTONOMY_TASKS = ("command", "write_note", "analyze_state")
 DEFAULT_AUTONOMY_ALLOWED_COMMANDS = ("python3", "python", "pytest", "echo")
+LEVEL_XP_STEP = 100
+
+FUN_TITLES: tuple[tuple[int, str], ...] = (
+    (1, "Rookie"),
+    (2, "Operator"),
+    (4, "Strategist"),
+    (7, "Maestro"),
+    (10, "Legend"),
+)
+
+CHALLENGE_TEMPLATES: tuple[dict[str, Any], ...] = (
+    {
+        "task_type": "write_note",
+        "title": "Daily highlight challenge #{index}",
+        "payload": {
+            "path": "data/autonomy/challenges.md",
+            "text": "Challenge #{index}: write one positive highlight.",
+        },
+        "priority": 7,
+    },
+    {
+        "task_type": "analyze_state",
+        "title": "State insight challenge #{index}",
+        "payload": {"path": "data/autonomy/insights.log"},
+        "priority": 6,
+    },
+    {
+        "task_type": "command",
+        "title": "Quick command challenge #{index}",
+        "payload": {"command": ["echo", "challenge-{index}"]},
+        "priority": 6,
+    },
+)
+
+
+def build_default_game_state() -> dict[str, Any]:
+    return {
+        "xp": 0,
+        "level": 1,
+        "title": "Rookie",
+        "streak_days": 0,
+        "last_active_date_utc": None,
+        "current_success_streak": 0,
+        "best_success_streak": 0,
+        "badges": [],
+        "completed_challenges": 0,
+        "active_challenges": [],
+    }
 
 
 def build_default_autonomy_state() -> dict[str, Any]:
@@ -22,11 +70,16 @@ def build_default_autonomy_state() -> dict[str, Any]:
             "task_type_stats": {},
             "improvement_backlog": [],
         },
+        "game": build_default_game_state(),
     }
 
 
 def _utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _utcday() -> date:
+    return datetime.now(timezone.utc).date()
 
 
 class AutonomousWorker:
@@ -40,17 +93,21 @@ class AutonomousWorker:
         workspace_root: str | Path | None = None,
         max_completed: int = 300,
         max_improvements: int = 300,
+        max_active_challenges: int = 50,
     ) -> None:
         if max_completed < 1:
             raise ValueError("max_completed must be >= 1")
         if max_improvements < 1:
             raise ValueError("max_improvements must be >= 1")
+        if max_active_challenges < 1:
+            raise ValueError("max_active_challenges must be >= 1")
         self.memory = memory
         self.runner = runner
         self.language = normalize_language(language or DEFAULT_LANGUAGE)
         self.workspace_root = Path(workspace_root or Path.cwd()).resolve()
         self.max_completed = max_completed
         self.max_improvements = max_improvements
+        self.max_active_challenges = max_active_challenges
 
     def enqueue(
         self,
@@ -58,6 +115,114 @@ class AutonomousWorker:
         title: str,
         payload: dict[str, Any] | None = None,
         priority: int = 5,
+    ) -> dict[str, Any]:
+        task = self._create_task(
+            task_type=task_type,
+            title=title,
+            payload=payload,
+            priority=priority,
+        )
+
+        state = self.memory.read_state()
+        autonomy = self._ensure_autonomy_state(state)
+        autonomy["queue"].append(task)
+        state["language"] = normalize_language(self.language)
+        self.memory.write_state(state)
+        return task
+
+    def spawn_challenges(self, count: int = 3, base_priority: int = 6) -> list[dict[str, Any]]:
+        if count < 1:
+            raise ValueError("count must be >= 1")
+        if count > 50:
+            raise ValueError("count must be <= 50")
+
+        state = self.memory.read_state()
+        autonomy = self._ensure_autonomy_state(state)
+        game = self._ensure_game_state(autonomy)
+
+        created: list[dict[str, Any]] = []
+        for index in range(count):
+            template = CHALLENGE_TEMPLATES[index % len(CHALLENGE_TEMPLATES)]
+            payload = json.loads(json.dumps(template["payload"]))
+            payload = self._format_template_payload(payload, index + 1)
+            template_priority = int(template.get("priority", 6))
+            priority = max(1, min(10, max(base_priority, template_priority)))
+
+            task = self._create_task(
+                task_type=str(template["task_type"]),
+                title=str(template["title"]).format(index=index + 1),
+                payload=payload,
+                priority=priority,
+                is_challenge=True,
+                challenge_code=f"challenge-{index + 1}",
+            )
+            autonomy["queue"].append(task)
+            self._register_active_challenge(game, task)
+            created.append(task)
+
+        state["language"] = normalize_language(self.language)
+        self.memory.write_state(state)
+        return created
+
+    def fun_status(self) -> dict[str, Any]:
+        state = self.memory.read_state()
+        autonomy = self._ensure_autonomy_state(state)
+        game = self._ensure_game_state(autonomy)
+        learning = autonomy.get("learning", {})
+        if not isinstance(learning, dict):
+            learning = {"task_type_stats": {}, "improvement_backlog": []}
+
+        queue_size = len(autonomy.get("queue", [])) if isinstance(autonomy.get("queue"), list) else 0
+        completed_size = (
+            len(autonomy.get("completed", [])) if isinstance(autonomy.get("completed"), list) else 0
+        )
+        backlog_size = len(learning.get("improvement_backlog", []))
+        return {
+            "game": game,
+            "queue_size": queue_size,
+            "completed_size": completed_size,
+            "improvement_backlog_size": backlog_size,
+            "known_task_types": sorted(learning.get("task_type_stats", {}).keys()),
+        }
+
+    def run(self, cycles: int = 1, dry_run: bool = False) -> dict[str, Any]:
+        if cycles < 1:
+            raise ValueError("cycles must be >= 1")
+
+        state = self.memory.read_state()
+        autonomy = self._ensure_autonomy_state(state)
+        state["language"] = normalize_language(self.language)
+
+        executed: list[dict[str, Any]] = []
+        game_events: list[dict[str, Any]] = []
+        for _ in range(cycles):
+            task = self._select_next_task(autonomy)
+            if task is None:
+                break
+
+            result = self._execute_task(task, state, dry_run=dry_run)
+            self._update_learning(autonomy, task, result)
+            self._record_completion(autonomy, task, result)
+            game_event = self._update_game_progress(autonomy, task, result)
+            result["fun"] = game_event
+            self._maybe_enqueue_follow_up(autonomy, task, result)
+            executed.append(result)
+            game_events.append(game_event)
+
+        summary = self._build_summary(autonomy, executed, game_events, dry_run)
+        autonomy["last_run"] = summary
+        state["autonomy"] = autonomy
+        self.memory.write_state(state)
+        return {"state": state, "executed": executed, "summary": summary}
+
+    def _create_task(
+        self,
+        task_type: str,
+        title: str,
+        payload: dict[str, Any] | None,
+        priority: int,
+        is_challenge: bool = False,
+        challenge_code: str | None = None,
     ) -> dict[str, Any]:
         normalized_task_type = str(task_type).strip()
         if normalized_task_type not in SUPPORTED_AUTONOMY_TASKS:
@@ -73,10 +238,6 @@ class AutonomousWorker:
 
         safe_priority = int(priority)
         safe_priority = max(1, min(10, safe_priority))
-
-        state = self.memory.read_state()
-        autonomy = self._ensure_autonomy_state(state)
-
         task = {
             "task_id": uuid.uuid4().hex[:12],
             "task_type": normalized_task_type,
@@ -86,36 +247,24 @@ class AutonomousWorker:
             "attempts": 0,
             "created_at_utc": _utcnow(),
         }
-        autonomy["queue"].append(task)
-        state["language"] = normalize_language(self.language)
-        self.memory.write_state(state)
+        if is_challenge:
+            task["is_challenge"] = True
+            if challenge_code:
+                task["challenge_code"] = challenge_code
         return task
 
-    def run(self, cycles: int = 1, dry_run: bool = False) -> dict[str, Any]:
-        if cycles < 1:
-            raise ValueError("cycles must be >= 1")
-
-        state = self.memory.read_state()
-        autonomy = self._ensure_autonomy_state(state)
-        state["language"] = normalize_language(self.language)
-
-        executed: list[dict[str, Any]] = []
-        for _ in range(cycles):
-            task = self._select_next_task(autonomy)
-            if task is None:
-                break
-
-            result = self._execute_task(task, state, dry_run=dry_run)
-            self._update_learning(autonomy, task, result)
-            self._record_completion(autonomy, task, result)
-            self._maybe_enqueue_follow_up(autonomy, task, result)
-            executed.append(result)
-
-        summary = self._build_summary(autonomy, executed, dry_run)
-        autonomy["last_run"] = summary
-        state["autonomy"] = autonomy
-        self.memory.write_state(state)
-        return {"state": state, "executed": executed, "summary": summary}
+    def _format_template_payload(self, payload: dict[str, Any], index: int) -> dict[str, Any]:
+        formatted: dict[str, Any] = {}
+        for key, value in payload.items():
+            if isinstance(value, str):
+                formatted[key] = value.format(index=index)
+            elif isinstance(value, list):
+                formatted[key] = [item.format(index=index) if isinstance(item, str) else item for item in value]
+            elif isinstance(value, dict):
+                formatted[key] = self._format_template_payload(value, index=index)
+            else:
+                formatted[key] = value
+        return formatted
 
     def _ensure_autonomy_state(self, state: dict[str, Any]) -> dict[str, Any]:
         autonomy = state.get("autonomy")
@@ -156,8 +305,55 @@ class AutonomousWorker:
                 ],
             },
         }
+        normalized["game"] = self._normalize_game_state(normalized.get("game"))
         state["autonomy"] = normalized
         return normalized
+
+    def _normalize_game_state(self, game: Any) -> dict[str, Any]:
+        default = build_default_game_state()
+        if not isinstance(game, dict):
+            return default
+
+        extras = {k: v for k, v in game.items() if k not in default}
+        badges = game.get("badges", default["badges"])
+        if not isinstance(badges, list):
+            badges = []
+        else:
+            badges = [str(item) for item in badges if isinstance(item, str)]
+
+        active = game.get("active_challenges", default["active_challenges"])
+        if not isinstance(active, list):
+            active = []
+        else:
+            active = [item for item in active if isinstance(item, dict)]
+        active = active[-self.max_active_challenges :]
+
+        normalized = {
+            **extras,
+            "xp": max(0, int(game.get("xp", default["xp"]))),
+            "level": max(1, int(game.get("level", default["level"]))),
+            "title": str(game.get("title", default["title"])),
+            "streak_days": max(0, int(game.get("streak_days", default["streak_days"]))),
+            "last_active_date_utc": game.get("last_active_date_utc"),
+            "current_success_streak": max(
+                0, int(game.get("current_success_streak", default["current_success_streak"]))
+            ),
+            "best_success_streak": max(
+                0, int(game.get("best_success_streak", default["best_success_streak"]))
+            ),
+            "badges": badges,
+            "completed_challenges": max(
+                0, int(game.get("completed_challenges", default["completed_challenges"]))
+            ),
+            "active_challenges": active,
+        }
+        normalized["title"] = self._title_for_level(normalized["level"])
+        return normalized
+
+    def _ensure_game_state(self, autonomy: dict[str, Any]) -> dict[str, Any]:
+        game = self._normalize_game_state(autonomy.get("game"))
+        autonomy["game"] = game
+        return game
 
     def _select_next_task(self, autonomy: dict[str, Any]) -> dict[str, Any] | None:
         queue = autonomy["queue"]
@@ -168,6 +364,13 @@ class AutonomousWorker:
         stats = learning.get("task_type_stats", {})
         if not isinstance(stats, dict):
             stats = {}
+
+        completed = autonomy.get("completed", [])
+        recent_types: set[str] = set()
+        if isinstance(completed, list):
+            for record in completed[-10:]:
+                if isinstance(record, dict):
+                    recent_types.add(str(record.get("task_type", "")))
 
         def score(task: dict[str, Any]) -> float:
             raw_priority = task.get("priority", 5)
@@ -188,7 +391,9 @@ class AutonomousWorker:
             except (TypeError, ValueError):
                 avg_reward = 0.5
 
-            return priority + avg_reward - (0.1 * attempts)
+            challenge_bonus = 0.5 if task.get("is_challenge") is True else 0.0
+            novelty_bonus = 0.2 if task_type and task_type not in recent_types else 0.0
+            return priority + avg_reward + challenge_bonus + novelty_bonus - (0.1 * attempts)
 
         best_index = max(range(len(queue)), key=lambda index: score(queue[index]))
         task = queue.pop(best_index)
@@ -464,6 +669,149 @@ class AutonomousWorker:
             if len(backlog) > self.max_improvements:
                 learning["improvement_backlog"] = backlog[-self.max_improvements :]
 
+    def _update_game_progress(
+        self,
+        autonomy: dict[str, Any],
+        task: dict[str, Any],
+        result: dict[str, Any],
+    ) -> dict[str, Any]:
+        game = self._ensure_game_state(autonomy)
+
+        today = _utcday()
+        previous_level = int(game.get("level", 1))
+        previous_xp = int(game.get("xp", 0))
+        streak_days = self._update_day_streak(game, today=today)
+
+        success = bool(result.get("success") is True)
+        if success:
+            game["current_success_streak"] = int(game.get("current_success_streak", 0)) + 1
+        else:
+            game["current_success_streak"] = 0
+        game["best_success_streak"] = max(
+            int(game.get("best_success_streak", 0)),
+            int(game.get("current_success_streak", 0)),
+        )
+
+        priority = int(task.get("priority", 5))
+        xp_gain = 5 + max(0, priority - 5)
+        xp_gain += int(round(float(result.get("reward", 0.0)) * 10))
+        if success:
+            xp_gain += 10
+        if task.get("is_challenge") is True:
+            xp_gain += 12 if success else 4
+        xp_gain = max(1, xp_gain)
+
+        game["xp"] = previous_xp + xp_gain
+        game["level"] = max(1, int(game["xp"]) // LEVEL_XP_STEP + 1)
+        game["title"] = self._title_for_level(int(game["level"]))
+
+        if task.get("is_challenge") is True:
+            self._resolve_active_challenge(game, str(task.get("task_id", "")))
+            if success:
+                game["completed_challenges"] = int(game.get("completed_challenges", 0)) + 1
+
+        new_badges = self._award_badges(game, autonomy)
+        level_up = int(game["level"]) > previous_level
+        return {
+            "xp_gained": xp_gain,
+            "xp_total": int(game["xp"]),
+            "level": int(game["level"]),
+            "title": str(game["title"]),
+            "level_up": level_up,
+            "streak_days": streak_days,
+            "new_badges": new_badges,
+            "current_success_streak": int(game["current_success_streak"]),
+            "best_success_streak": int(game["best_success_streak"]),
+            "completed_challenges": int(game["completed_challenges"]),
+        }
+
+    def _update_day_streak(self, game: dict[str, Any], today: date) -> int:
+        raw_last = game.get("last_active_date_utc")
+        last_day: date | None = None
+        if isinstance(raw_last, str):
+            try:
+                last_day = date.fromisoformat(raw_last)
+            except ValueError:
+                last_day = None
+
+        current = int(game.get("streak_days", 0))
+        if last_day is None:
+            current = 1
+        elif last_day == today:
+            current = max(current, 1)
+        elif last_day == today - timedelta(days=1):
+            current = max(1, current + 1)
+        else:
+            current = 1
+
+        game["streak_days"] = current
+        game["last_active_date_utc"] = today.isoformat()
+        return current
+
+    def _award_badges(self, game: dict[str, Any], autonomy: dict[str, Any]) -> list[str]:
+        existing = set(str(item) for item in game.get("badges", []))
+        completed = autonomy.get("completed", [])
+        if not isinstance(completed, list):
+            completed = []
+
+        successful_task_types = set()
+        for record in completed:
+            if not isinstance(record, dict):
+                continue
+            result = record.get("result", {})
+            if isinstance(result, dict) and result.get("success") is True:
+                successful_task_types.add(str(record.get("task_type", "")))
+
+        badge_checks: list[tuple[str, bool]] = [
+            ("first_steps", len(completed) >= 1),
+            ("steady_runner", int(game.get("streak_days", 0)) >= 3),
+            ("hot_hand", int(game.get("best_success_streak", 0)) >= 5),
+            ("explorer", len(successful_task_types) >= 3),
+            ("challenger", int(game.get("completed_challenges", 0)) >= 3),
+            ("level_5", int(game.get("level", 1)) >= 5),
+        ]
+
+        new_badges: list[str] = []
+        for badge_code, unlocked in badge_checks:
+            if unlocked and badge_code not in existing:
+                existing.add(badge_code)
+                new_badges.append(badge_code)
+
+        ordered_badges = [code for code, _ in badge_checks if code in existing]
+        game["badges"] = ordered_badges
+        return new_badges
+
+    def _title_for_level(self, level: int) -> str:
+        title = "Rookie"
+        for min_level, candidate in FUN_TITLES:
+            if level >= min_level:
+                title = candidate
+        return title
+
+    def _register_active_challenge(self, game: dict[str, Any], task: dict[str, Any]) -> None:
+        active = game.get("active_challenges", [])
+        if not isinstance(active, list):
+            active = []
+        entry = {
+            "task_id": str(task.get("task_id", "")),
+            "challenge_code": str(task.get("challenge_code", "")),
+            "title": str(task.get("title", "")),
+            "created_at_utc": str(task.get("created_at_utc", _utcnow())),
+        }
+        active.append(entry)
+        game["active_challenges"] = active[-self.max_active_challenges :]
+
+    def _resolve_active_challenge(self, game: dict[str, Any], task_id: str) -> None:
+        active = game.get("active_challenges", [])
+        if not isinstance(active, list):
+            game["active_challenges"] = []
+            return
+        game["active_challenges"] = [
+            entry
+            for entry in active
+            if isinstance(entry, dict) and str(entry.get("task_id", "")) != task_id
+        ]
+
     def _build_improvement_item(
         self,
         task: dict[str, Any],
@@ -555,6 +903,7 @@ class AutonomousWorker:
         self,
         autonomy: dict[str, Any],
         executed: list[dict[str, Any]],
+        game_events: list[dict[str, Any]],
         dry_run: bool,
     ) -> dict[str, Any]:
         success_count = sum(1 for item in executed if item.get("success") is True)
@@ -568,6 +917,18 @@ class AutonomousWorker:
             else 0.0
         )
         queue_size = len(autonomy.get("queue", [])) if isinstance(autonomy.get("queue"), list) else 0
+        xp_gained = sum(int(item.get("xp_gained", 0)) for item in game_events)
+        level_ups = sum(1 for item in game_events if item.get("level_up") is True)
+        new_badges: list[str] = []
+        for item in game_events:
+            badges = item.get("new_badges", [])
+            if not isinstance(badges, list):
+                continue
+            for badge in badges:
+                if isinstance(badge, str) and badge not in new_badges:
+                    new_badges.append(badge)
+
+        game = self._ensure_game_state(autonomy)
         return {
             "timestamp_utc": _utcnow(),
             "executed_count": len(executed),
@@ -576,6 +937,13 @@ class AutonomousWorker:
             "average_reward": avg_reward,
             "queue_size": queue_size,
             "dry_run": dry_run,
+            "xp_gained": xp_gained,
+            "level": int(game.get("level", 1)),
+            "title": str(game.get("title", "Rookie")),
+            "streak_days": int(game.get("streak_days", 0)),
+            "level_ups": level_ups,
+            "new_badges": new_badges,
+            "completed_challenges": int(game.get("completed_challenges", 0)),
         }
 
     def _safe_data_path(self, raw_path: Any) -> Path:

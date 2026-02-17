@@ -46,6 +46,24 @@ def parse_payload_json(value: str) -> dict[str, Any]:
     return payload
 
 
+def build_fun_moment(summary: dict[str, Any], language: str) -> str:
+    level_ups = int(summary.get("level_ups", 0))
+    new_badges = summary.get("new_badges", [])
+    if not isinstance(new_badges, list):
+        new_badges = []
+    valid_badges = [badge for badge in new_badges if isinstance(badge, str) and badge]
+
+    if level_ups > 0:
+        return translate("fun_level_up", language)
+    if valid_badges:
+        return f"{translate('fun_new_badge', language)} {', '.join(valid_badges)}"
+    if int(summary.get("executed_count", 0)) == 0:
+        return translate("fun_queue_empty", language)
+    if int(summary.get("failure_count", 0)) == 0:
+        return translate("fun_clean_run", language)
+    return translate("fun_keep_going", language)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="growing_agent")
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
@@ -130,6 +148,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     autonomy_status_parser.add_argument("--state-path", default="data/state.json")
     add_language_argument(autonomy_status_parser)
+
+    spawn_challenges_parser = subparsers.add_parser(
+        "spawn-challenges",
+        help="Generate fun challenge tasks in autonomy queue.",
+    )
+    spawn_challenges_parser.add_argument("--state-path", default="data/state.json")
+    spawn_challenges_parser.add_argument("--log-path", default="data/runner.log")
+    spawn_challenges_parser.add_argument("--count", type=int, default=3)
+    spawn_challenges_parser.add_argument("--base-priority", type=int, default=6)
+    add_language_argument(spawn_challenges_parser)
+
+    fun_status_parser = subparsers.add_parser(
+        "fun-status",
+        help="Show XP, level, badges, and streak.",
+    )
+    fun_status_parser.add_argument("--state-path", default="data/state.json")
+    fun_status_parser.add_argument("--log-path", default="data/runner.log")
+    add_language_argument(fun_status_parser)
     return parser
 
 
@@ -274,6 +310,8 @@ def main() -> int:
             "summary": result["summary"],
             "executed": result["executed"],
             "autonomy": state.get("autonomy", {}),
+            "fun": state.get("autonomy", {}).get("game", {}),
+            "moment": build_fun_moment(result["summary"], language),
             "display_language": language,
             "message": translate("autonomy_run_completed", language),
         }
@@ -286,8 +324,39 @@ def main() -> int:
         language = args.language or str(state.get("language", DEFAULT_LANGUAGE))
         response = {
             "autonomy": state.get("autonomy", {}),
+            "fun": state.get("autonomy", {}).get("game", {}),
             "display_language": language,
             "message": translate("autonomy_status_loaded", language),
+        }
+        print(json.dumps(response, indent=2, ensure_ascii=False))
+        return 0
+
+    if args.subcommand == "spawn-challenges":
+        worker = build_autonomous_worker_from_args(args)
+        try:
+            tasks = worker.spawn_challenges(
+                count=args.count,
+                base_priority=args.base_priority,
+            )
+        except ValueError as error:
+            parser.error(str(error))
+        language = worker.language
+        response = {
+            "tasks": tasks,
+            "added_count": len(tasks),
+            "display_language": language,
+            "message": translate("challenges_spawned", language),
+        }
+        print(json.dumps(response, indent=2, ensure_ascii=False))
+        return 0
+
+    if args.subcommand == "fun-status":
+        worker = build_autonomous_worker_from_args(args)
+        fun = worker.fun_status()
+        response = {
+            "fun": fun,
+            "display_language": worker.language,
+            "message": translate("fun_status_loaded", worker.language),
         }
         print(json.dumps(response, indent=2, ensure_ascii=False))
         return 0

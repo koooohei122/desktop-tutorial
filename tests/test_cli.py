@@ -320,6 +320,8 @@ class TestCli(unittest.TestCase):
             self.assertEqual(run_payload["message"], "Autonomous work cycle completed.")
             self.assertEqual(run_payload["summary"]["executed_count"], 1)
             self.assertEqual(run_payload["executed"][0]["task_type"], "write_note")
+            self.assertIn("moment", run_payload)
+            self.assertIn("fun", run_payload)
 
             status = self.run_cli(
                 [
@@ -334,6 +336,7 @@ class TestCli(unittest.TestCase):
             status_payload = json.loads(status.stdout)
             self.assertEqual(status_payload["message"], "Loaded autonomous work status.")
             self.assertIn("learning", status_payload["autonomy"])
+            self.assertIn("fun", status_payload)
 
     def test_additional_languages_are_supported(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -356,6 +359,67 @@ class TestCli(unittest.TestCase):
             self.assertEqual(status.returncode, 0, msg=status.stderr)
             status_payload = json.loads(status.stdout)
             self.assertEqual(status_payload["language"], "hi")
+
+    def test_spawn_challenges_and_fun_status_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+
+            spawn = self.run_cli(
+                [
+                    "spawn-challenges",
+                    "--count",
+                    "2",
+                    "--base-priority",
+                    "6",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                    "--language",
+                    "en",
+                ]
+            )
+            self.assertEqual(spawn.returncode, 0, msg=spawn.stderr)
+            spawn_payload = json.loads(spawn.stdout)
+            self.assertEqual(spawn_payload["message"], "Challenge pack generated.")
+            self.assertEqual(spawn_payload["added_count"], 2)
+
+            run = self.run_cli(
+                [
+                    "run-autonomy",
+                    "--cycles",
+                    "2",
+                    "--dry-run",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                    "--language",
+                    "en",
+                ]
+            )
+            self.assertEqual(run.returncode, 0, msg=run.stderr)
+            run_payload = json.loads(run.stdout)
+            self.assertEqual(run_payload["summary"]["executed_count"], 2)
+            self.assertGreaterEqual(int(run_payload["summary"]["xp_gained"]), 1)
+            self.assertTrue(isinstance(run_payload["moment"], str) and run_payload["moment"])
+
+            fun_status = self.run_cli(
+                [
+                    "fun-status",
+                    "--state-path",
+                    str(state_path),
+                    "--log-path",
+                    str(log_path),
+                    "--language",
+                    "en",
+                ]
+            )
+            self.assertEqual(fun_status.returncode, 0, msg=fun_status.stderr)
+            fun_payload = json.loads(fun_status.stdout)
+            self.assertEqual(fun_payload["message"], "Loaded fun progression status.")
+            self.assertIn("game", fun_payload["fun"])
 
 
 if __name__ == "__main__":

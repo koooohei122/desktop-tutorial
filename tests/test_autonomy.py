@@ -36,6 +36,8 @@ class TestAutonomyWorker(unittest.TestCase):
             self.assertEqual(result["summary"]["failure_count"], 0)
             self.assertEqual(len(result["executed"]), 1)
             self.assertTrue(result["executed"][0]["success"])
+            self.assertIn("fun", result["executed"][0])
+            self.assertGreater(result["executed"][0]["fun"]["xp_gained"], 0)
 
             notes_path = Path(tmpdir) / "data" / "autonomy" / "notes.md"
             self.assertTrue(notes_path.exists())
@@ -49,6 +51,10 @@ class TestAutonomyWorker(unittest.TestCase):
             self.assertEqual(write_note_stats.get("attempts"), 1)
             self.assertEqual(write_note_stats.get("successes"), 1)
             self.assertGreaterEqual(float(write_note_stats.get("avg_reward", 0.0)), 1.0)
+            game = autonomy.get("game", {})
+            self.assertIsInstance(game, dict)
+            self.assertGreater(int(game.get("xp", 0)), 0)
+            self.assertIn("first_steps", game.get("badges", []))
 
     def test_failure_adds_improvement_and_followup(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -126,6 +132,34 @@ class TestAutonomyWorker(unittest.TestCase):
             result = worker.run(cycles=1, dry_run=True)
             self.assertEqual(len(result["executed"]), 1)
             self.assertEqual(result["executed"][0]["task_type"], "command")
+
+    def test_spawn_challenges_and_fun_status(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "state.json"
+            log_path = Path(tmpdir) / "runner.log"
+            memory = MemoryStore(state_path)
+            runner = CommandRunner(
+                allowed_commands={sys.executable, Path(sys.executable).name, "echo"},
+                log_path=log_path,
+            )
+            worker = AutonomousWorker(
+                memory=memory,
+                runner=runner,
+                language="en",
+                workspace_root=tmpdir,
+            )
+
+            tasks = worker.spawn_challenges(count=3, base_priority=6)
+            self.assertEqual(len(tasks), 3)
+            self.assertTrue(all(task.get("is_challenge") is True for task in tasks))
+
+            result = worker.run(cycles=3, dry_run=True)
+            self.assertEqual(result["summary"]["executed_count"], 3)
+            self.assertGreaterEqual(result["summary"]["xp_gained"], 1)
+
+            fun = worker.fun_status()
+            self.assertIn("game", fun)
+            self.assertGreaterEqual(int(fun["game"]["xp"]), 1)
 
 
 if __name__ == "__main__":

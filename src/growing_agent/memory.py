@@ -18,6 +18,18 @@ def build_default_autonomy_state() -> dict[str, Any]:
             "task_type_stats": {},
             "improvement_backlog": [],
         },
+        "game": {
+            "xp": 0,
+            "level": 1,
+            "title": "Rookie",
+            "streak_days": 0,
+            "last_active_date_utc": None,
+            "current_success_streak": 0,
+            "best_success_streak": 0,
+            "badges": [],
+            "completed_challenges": 0,
+            "active_challenges": [],
+        },
     }
 
 
@@ -193,10 +205,43 @@ class MemoryStore:
             "improvement_backlog": improvement_backlog,
         }
 
+        game_raw = autonomy.get("game", default["game"])
+        if not isinstance(game_raw, dict):
+            game_raw = {}
+        default_game = default["game"]
+        badges_raw = game_raw.get("badges", default_game["badges"])
+        if not isinstance(badges_raw, list):
+            badges_raw = []
+        badges = [str(item) for item in badges_raw if isinstance(item, str)]
+        active_raw = game_raw.get("active_challenges", default_game["active_challenges"])
+        if not isinstance(active_raw, list):
+            active_raw = []
+        active_challenges = [item for item in active_raw if isinstance(item, dict)]
+        game = {
+            **default_game,
+            **game_raw,
+            "xp": max(0, int(game_raw.get("xp", default_game["xp"]))),
+            "level": max(1, int(game_raw.get("level", default_game["level"]))),
+            "title": str(game_raw.get("title", default_game["title"])),
+            "streak_days": max(0, int(game_raw.get("streak_days", default_game["streak_days"]))),
+            "current_success_streak": max(
+                0, int(game_raw.get("current_success_streak", default_game["current_success_streak"]))
+            ),
+            "best_success_streak": max(
+                0, int(game_raw.get("best_success_streak", default_game["best_success_streak"]))
+            ),
+            "completed_challenges": max(
+                0, int(game_raw.get("completed_challenges", default_game["completed_challenges"]))
+            ),
+            "badges": badges,
+            "active_challenges": active_challenges,
+        }
+
         normalized = {
             **extras,
             "queue": queue,
             "completed": completed,
             "learning": learning,
+            "game": game,
         }
         return normalized

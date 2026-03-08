@@ -468,10 +468,58 @@
     .sagrada-note p { font-size: 0.9rem; color: var(--text-dim); line-height: 2.2; }
     .sagrada-note strong { color: var(--cyan); }
 
+    /* ─── HAMBURGER ─── */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+      cursor: pointer;
+      padding: 4px;
+      background: none;
+      border: none;
+    }
+    .hamburger span {
+      display: block;
+      width: 24px;
+      height: 2px;
+      background: var(--cyan);
+      border-radius: 2px;
+      transition: transform 0.3s, opacity 0.3s;
+    }
+    .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .hamburger.open span:nth-child(2) { opacity: 0; }
+    .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    /* ─── MOBILE MENU ─── */
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      top: 56px; left: 0; right: 0;
+      background: rgba(2,8,16,0.97);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(0,245,255,0.15);
+      z-index: 99;
+      padding: 1.5rem 2rem;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 0.9rem;
+      letter-spacing: 3px;
+      font-family: 'Orbitron', sans-serif;
+      transition: color 0.3s;
+    }
+    .mobile-menu a:hover { color: var(--cyan); }
+
     /* ─── RESPONSIVE ─── */
     @media (max-width: 768px) {
       nav { padding: 1rem 1.5rem; }
       .nav-links { display: none; }
+      .hamburger { display: flex; }
       .axis-layout { grid-template-columns: 1fr; gap: 3rem; }
       .axis-layout.reverse { direction: ltr; }
       .services-grid { grid-template-columns: 1fr; }
@@ -496,7 +544,18 @@
     <li><a href="#vision">VISION</a></li>
     <li><a href="#contact">CONTACT</a></li>
   </ul>
+  <button class="hamburger" id="hamburger" aria-label="メニューを開く">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
+
+<!-- MOBILE MENU -->
+<div class="mobile-menu" id="mobile-menu">
+  <a href="#mission" class="mobile-link">MISSION</a>
+  <a href="#services" class="mobile-link">SERVICES</a>
+  <a href="#vision" class="mobile-link">VISION</a>
+  <a href="#contact" class="mobile-link">CONTACT</a>
+</div>
 
 <!-- HERO -->
 <section id="hero">
@@ -1325,6 +1384,20 @@ const observer = new IntersectionObserver((entries) => {
   entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
 }, { threshold: 0.08 });
 document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Hamburger menu
+const hamburger = document.getElementById('hamburger');
+const mobileMenu = document.getElementById('mobile-menu');
+hamburger.addEventListener('click', () => {
+  hamburger.classList.toggle('open');
+  mobileMenu.classList.toggle('open');
+});
+document.querySelectorAll('.mobile-link').forEach(link => {
+  link.addEventListener('click', () => {
+    hamburger.classList.remove('open');
+    mobileMenu.classList.remove('open');
+  });
+});
 </script>
 </body>
 </html>

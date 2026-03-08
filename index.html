@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>METACHI — Metaverse Hitachi</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700;900&family=Orbitron:wght@400;700;900&display=swap');
+
+    :root {
+      --cyan: #00f5ff;
+      --blue: #0066ff;
+      --purple: #8b00ff;
+      --dark: #020810;
+      --dark2: #040d1a;
+      --dark3: #071224;
+      --text: #c8d8f0;
+      --text-dim: #5a7a9a;
+      --glow-cyan: 0 0 20px rgba(0, 245, 255, 0.5), 0 0 60px rgba(0, 245, 255, 0.2);
+      --glow-blue: 0 0 20px rgba(0, 102, 255, 0.5), 0 0 60px rgba(0, 102, 255, 0.2);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--dark);
+      color: var(--text);
+      font-family: 'Noto Sans JP', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ─── CANVAS BACKGROUND ─── */
+    #bg-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.2rem 3rem;
+      background: rgba(2, 8, 16, 0.8);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(0, 245, 255, 0.1);
+    }
+
+    .nav-logo {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: var(--cyan);
+      letter-spacing: 4px;
+      text-shadow: var(--glow-cyan);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+      transition: color 0.3s;
+    }
+
+    .nav-links a:hover { color: var(--cyan); }
+
+    /* ─── SECTIONS ─── */
+    section {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ─── HERO ─── */
+    #hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .hero-subtitle {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.8rem;
+      letter-spacing: 8px;
+      color: var(--cyan);
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+      opacity: 0;
+      animation: fadeUp 0.8s 0.2s forwards;
+    }
+
+    .hero-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(4rem, 12vw, 10rem);
+      font-weight: 900;
+      line-height: 0.9;
+      letter-spacing: -2px;
+      background: linear-gradient(135deg, #fff 0%, var(--cyan) 40%, var(--blue) 70%, var(--purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      opacity: 0;
+      animation: fadeUp 0.8s 0.4s forwards;
+      filter: drop-shadow(0 0 40px rgba(0, 245, 255, 0.3));
+    }
+
+    .hero-tagline {
+      margin-top: 2rem;
+      font-size: 1.1rem;
+      color: var(--text-dim);
+      font-weight: 300;
+      letter-spacing: 2px;
+      opacity: 0;
+      animation: fadeUp 0.8s 0.6s forwards;
+    }
+
+    .hero-tagline span { color: var(--cyan); font-weight: 700; }
+
+    .hero-definition {
+      margin-top: 3rem;
+      max-width: 600px;
+      padding: 1.5rem 2rem;
+      border: 1px solid rgba(0, 245, 255, 0.2);
+      background: rgba(0, 245, 255, 0.03);
+      border-radius: 2px;
+      font-size: 0.9rem;
+      line-height: 2;
+      color: var(--text-dim);
+      opacity: 0;
+      animation: fadeUp 0.8s 0.8s forwards;
+    }
+
+    .hero-definition strong {
+      color: var(--cyan);
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.75rem;
+      letter-spacing: 3px;
+    }
+
+    .scroll-indicator {
+      position: absolute;
+      bottom: 3rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      opacity: 0;
+      animation: fadeIn 1s 1.5s forwards;
+    }
+
+    .scroll-indicator span {
+      font-size: 0.65rem;
+      letter-spacing: 4px;
+      color: var(--text-dim);
+    }
+
+    .scroll-line {
+      width: 1px;
+      height: 60px;
+      background: linear-gradient(to bottom, var(--cyan), transparent);
+      animation: scrollPulse 2s infinite;
+    }
+
+    /* ─── SECTION COMMON ─── */
+    .section-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 8rem 2rem;
+    }
+
+    .section-label {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.65rem;
+      letter-spacing: 6px;
+      color: var(--cyan);
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+      opacity: 0.7;
+    }
+
+    .section-title {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 900;
+      line-height: 1.1;
+      margin-bottom: 1rem;
+    }
+
+    .section-title .accent {
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .divider {
+      width: 60px;
+      height: 2px;
+      background: linear-gradient(to right, var(--cyan), transparent);
+      margin-bottom: 3rem;
+    }
+
+    /* ─── WORLD / STORY ─── */
+    #world .section-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6rem;
+      align-items: center;
+    }
+
+    .world-visual {
+      position: relative;
+    }
+
+    .city-map {
+      width: 100%;
+      aspect-ratio: 1;
+      border: 1px solid rgba(0, 245, 255, 0.15);
+      border-radius: 4px;
+      background: var(--dark2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .city-map canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .story-flow {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .story-node {
+      display: flex;
+      gap: 1.2rem;
+      align-items: flex-start;
+    }
+
+    .story-node-icon {
+      width: 40px;
+      height: 40px;
+      flex-shrink: 0;
+      border: 1px solid rgba(0, 245, 255, 0.3);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      background: rgba(0, 245, 255, 0.05);
+    }
+
+    .story-node-text h4 {
+      font-size: 0.9rem;
+      color: var(--cyan);
+      margin-bottom: 0.3rem;
+      letter-spacing: 1px;
+    }
+
+    .story-node-text p {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      line-height: 1.7;
+    }
+
+    /* ─── SYSTEMS ─── */
+    #systems {
+      background: linear-gradient(180deg, transparent 0%, rgba(0, 102, 255, 0.03) 50%, transparent 100%);
+    }
+
+    .systems-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+      margin-top: 3rem;
+    }
+
+    .system-card {
+      padding: 2rem 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.02);
+      transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+      cursor: default;
+    }
+
+    .system-card:hover {
+      border-color: rgba(0, 245, 255, 0.3);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 60px rgba(0, 102, 255, 0.15);
+    }
+
+    .system-card-icon {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .system-card h3 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.8rem;
+      letter-spacing: 3px;
+      color: var(--cyan);
+      margin-bottom: 0.8rem;
+    }
+
+    .system-card p {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      line-height: 1.8;
+    }
+
+    /* ─── ELEMENTS POWER ─── */
+    .elements-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+      margin-top: 3rem;
+    }
+
+    .element-card {
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      background: var(--dark2);
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .element-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .element-card.water { --el-color: #00c8ff; }
+    .element-card.thunder { --el-color: #ffe000; }
+    .element-card.fire { --el-color: #ff4400; }
+    .element-card.wind { --el-color: #00ff88; }
+
+    .element-card:hover {
+      border-color: var(--el-color);
+      box-shadow: 0 0 40px rgba(var(--el-color), 0.2), inset 0 0 60px rgba(0,0,0,0.5);
+      transform: translateY(-6px);
+    }
+
+    .element-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      display: block;
+      filter: drop-shadow(0 0 10px var(--el-color));
+    }
+
+    .element-card h3 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.9rem;
+      letter-spacing: 3px;
+      color: var(--el-color);
+      margin-bottom: 0.5rem;
+    }
+
+    .element-card p {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      line-height: 1.7;
+    }
+
+    /* ─── ECONOMY ─── */
+    #economy .section-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5rem;
+      align-items: center;
+    }
+
+    .economy-flow {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.2rem 1.5rem;
+      border: 1px solid rgba(0, 245, 255, 0.15);
+      border-radius: 4px;
+      background: rgba(0, 245, 255, 0.03);
+      width: 100%;
+      transition: border-color 0.3s;
+    }
+
+    .flow-step:hover { border-color: rgba(0, 245, 255, 0.4); }
+
+    .flow-step-num {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: rgba(0, 245, 255, 0.3);
+      min-width: 2rem;
+    }
+
+    .flow-step-content h4 {
+      font-size: 0.9rem;
+      color: var(--text);
+      margin-bottom: 0.2rem;
+    }
+
+    .flow-step-content p {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+
+    .flow-arrow {
+      width: 1px;
+      height: 20px;
+      background: linear-gradient(to bottom, rgba(0, 245, 255, 0.3), rgba(0, 245, 255, 0.1));
+      margin-left: 2.8rem;
+    }
+
+    .economy-items {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .economy-item {
+      padding: 1.2rem;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 4px;
+      background: var(--dark2);
+      text-align: center;
+      transition: all 0.3s;
+    }
+
+    .economy-item:hover {
+      border-color: rgba(0, 245, 255, 0.2);
+      background: rgba(0, 245, 255, 0.05);
+    }
+
+    .economy-item .item-icon { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .economy-item h4 { font-size: 0.8rem; color: var(--text); }
+    .economy-item p { font-size: 0.7rem; color: var(--text-dim); margin-top: 0.2rem; }
+
+    /* ─── VISION FINAL ─── */
+    #vision {
+      text-align: center;
+      background: linear-gradient(180deg, transparent 0%, rgba(139, 0, 255, 0.05) 50%, transparent 100%);
+    }
+
+    .vision-tagline {
+      font-size: clamp(1.5rem, 4vw, 2.8rem);
+      font-weight: 900;
+      line-height: 1.4;
+      max-width: 800px;
+      margin: 0 auto 3rem;
+    }
+
+    .vision-tagline .highlight {
+      font-family: 'Orbitron', sans-serif;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .vision-pillars {
+      display: flex;
+      justify-content: center;
+      gap: 3rem;
+      flex-wrap: wrap;
+      margin-bottom: 5rem;
+    }
+
+    .pillar {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .pillar-num {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .pillar p {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+    }
+
+    .final-statement {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 3rem;
+      border: 1px solid rgba(0, 245, 255, 0.2);
+      border-radius: 4px;
+      background: linear-gradient(135deg, rgba(0, 245, 255, 0.03), rgba(139, 0, 255, 0.03));
+      position: relative;
+      overflow: hidden;
+    }
+
+    .final-statement::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--cyan), transparent);
+    }
+
+    .final-statement h2 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.75rem;
+      letter-spacing: 5px;
+      color: var(--cyan);
+      margin-bottom: 1.5rem;
+    }
+
+    .final-statement p {
+      font-size: 1.1rem;
+      line-height: 2;
+      color: var(--text);
+    }
+
+    .final-statement strong {
+      color: var(--cyan);
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 3rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    footer p {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 4px;
+      color: var(--text-dim);
+    }
+
+    footer .footer-logo {
+      font-size: 1.2rem;
+      color: var(--cyan);
+      margin-bottom: 1rem;
+      text-shadow: var(--glow-cyan);
+    }
+
+    /* ─── ANIMATIONS ─── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes scrollPulse {
+      0%, 100% { opacity: 0.3; transform: scaleY(1); }
+      50% { opacity: 1; transform: scaleY(1.2); }
+    }
+
+    /* ─── SCROLL REVEAL ─── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 768px) {
+      nav { padding: 1rem 1.5rem; }
+      .nav-links { display: none; }
+      #world .section-inner { grid-template-columns: 1fr; gap: 3rem; }
+      .elements-grid { grid-template-columns: 1fr 1fr; }
+      #economy .section-inner { grid-template-columns: 1fr; gap: 3rem; }
+      .vision-pillars { gap: 2rem; }
+    }
+
+    @media (max-width: 480px) {
+      .elements-grid { grid-template-columns: 1fr 1fr; }
+      .economy-items { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">METACHI</div>
+  <ul class="nav-links">
+    <li><a href="#world">WORLD</a></li>
+    <li><a href="#systems">SYSTEM</a></li>
+    <li><a href="#economy">ECONOMY</a></li>
+    <li><a href="#vision">VISION</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-subtitle">Metaverse × Hitachi</div>
+  <h1 class="hero-title">METACHI</h1>
+  <p class="hero-tagline">
+    <span>ゲーム × AI × 商業 × 製造</span><br>
+    現実都市とメタバースをつなぐプロジェクト
+  </p>
+  <div class="hero-definition">
+    <strong>DEFINITION</strong><br><br>
+    現実の都市（日立市）をベースに<br>
+    ゲーム・AI・商業・製造を統合した<br>
+    <strong>リアル連動メタバース都市</strong>
+  </div>
+  <div class="scroll-indicator">
+    <span>SCROLL</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- WORLD & STORY -->
+<section id="world">
+  <div class="section-inner">
+    <div class="world-text reveal">
+      <div class="section-label">Chapter 01</div>
+      <h2 class="section-title">
+        神話と未来が<br>交差する<br><span class="accent">世界</span>
+      </h2>
+      <div class="divider"></div>
+
+      <div class="story-flow">
+        <div class="story-node">
+          <div class="story-node-icon">🌏</div>
+          <div class="story-node-text">
+            <h4>舞台：茨城県日立市</h4>
+            <p>リアル地形を完全再現したオープンワールドRPG。神・モンスター・歴史人物・AI NPCが共存する世界。</p>
+          </div>
+        </div>
+        <div class="story-node">
+          <div class="story-node-icon">⚡</div>
+          <div class="story-node-text">
+            <h4>発端：50年ごとの大地震</h4>
+            <p>未来では規模が増大し続ける謎の巨大地震。その原因を探るため主人公はVRシステム「METACHI」へ潜入する。</p>
+          </div>
+        </div>
+        <div class="story-node">
+          <div class="story-node-icon">⛩️</div>
+          <div class="story-node-text">
+            <h4>転移：過去の日本へ</h4>
+            <p>事故で過去の日本に飛ばされた主人公は神々と出会い、世界の異変を調べることになる。</p>
+          </div>
+        </div>
+        <div class="story-node">
+          <div class="story-node-icon">👁️</div>
+          <div class="story-node-text">
+            <h4>最終敵：カカセオ（タケミナカタ）</h4>
+            <p>全ての異変の根源。神話と現代が交差する壮大な戦いへ。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="world-visual reveal">
+      <div class="city-map">
+        <canvas id="city-canvas"></canvas>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SYSTEMS -->
+<section id="systems">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-label">Chapter 02</div>
+      <h2 class="section-title">神の力を<br>宿す<span class="accent">4属性</span></h2>
+      <div class="divider"></div>
+      <p style="color: var(--text-dim); font-size: 0.9rem; line-height: 2; max-width: 600px;">
+        プレイヤーは4つの神の力のいずれかを継承する。選んだ属性により、戦闘スタイル・特殊能力・受注クエストが大きく変化する。
+      </p>
+    </div>
+
+    <div class="elements-grid reveal">
+      <div class="element-card water">
+        <span class="element-icon">💧</span>
+        <h3>水</h3>
+        <p>癒しと流動の力。敵の動きを封じ、仲間を回復する水神の加護。</p>
+      </div>
+      <div class="element-card thunder">
+        <span class="element-icon">⚡</span>
+        <h3>雷</h3>
+        <p>速さと破壊の力。圧倒的なスピードで敵を撃ち抜く雷神の力。</p>
+      </div>
+      <div class="element-card fire">
+        <span class="element-icon">🔥</span>
+        <h3>火</h3>
+        <p>熱狂と革命の力。広範囲に猛威を振るう炎の神の怒り。</p>
+      </div>
+      <div class="element-card wind">
+        <span class="element-icon">🌀</span>
+        <h3>風</h3>
+        <p>自由と俊敏の力。地形を超え空間を支配する風の神の息吹。</p>
+      </div>
+    </div>
+
+    <div class="systems-grid reveal" style="margin-top: 5rem;">
+      <div class="system-card">
+        <div class="system-card-icon">🤖</div>
+        <h3>AI NPC</h3>
+        <p>固定会話ではなくAI人格を持つNPC。会話・案内・商売・クエスト生成まで自律的に行動する。</p>
+      </div>
+      <div class="system-card">
+        <div class="system-card-icon">🗺️</div>
+        <h3>AUTO WORLD</h3>
+        <p>画像からAIが自動で3D世界を生成。現実の写真から仮想空間を構築する未来の都市生成システム。</p>
+      </div>
+      <div class="system-card">
+        <div class="system-card-icon">📦</div>
+        <h3>3D PRINT</h3>
+        <p>ゲーム内で制作したアイテムを現実世界で製造・配送。メタバースと物理世界を直結する製造システム。</p>
+      </div>
+      <div class="system-card">
+        <div class="system-card-icon">🏙️</div>
+        <h3>CITY OS</h3>
+        <p>観光・商業・ゲーム・コミュニティ・教育を統合した都市オペレーティングシステム。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ECONOMY -->
+<section id="economy">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-label">Chapter 03</div>
+      <h2 class="section-title">ゲームが<br><span class="accent">商店街</span>に<br>なる経済</h2>
+      <div class="divider"></div>
+
+      <div class="economy-flow">
+        <div class="flow-step">
+          <span class="flow-step-num">01</span>
+          <div class="flow-step-content">
+            <h4>ゲーム内で商品を選ぶ</h4>
+            <p>仮想の商店街でラーメン・カレー・地元特産品を注文</p>
+          </div>
+        </div>
+        <div class="flow-arrow"></div>
+        <div class="flow-step">
+          <span class="flow-step-num">02</span>
+          <div class="flow-step-content">
+            <h4>リアルタイムで決済</h4>
+            <p>ゲーム内通貨と現実の決済システムが連動</p>
+          </div>
+        </div>
+        <div class="flow-arrow"></div>
+        <div class="flow-step">
+          <span class="flow-step-num">03</span>
+          <div class="flow-step-content">
+            <h4>現実世界に商品が届く</h4>
+            <p>日立市の実店舗から自宅へ直送</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1.5rem; letter-spacing: 1px;">LINKED STORES</p>
+      <div class="economy-items">
+        <div class="economy-item">
+          <div class="item-icon">🍜</div>
+          <h4>ラーメン屋</h4>
+          <p>日立の名店と直結</p>
+        </div>
+        <div class="economy-item">
+          <div class="item-icon">🍛</div>
+          <h4>カレー屋</h4>
+          <p>ゲーム内注文で配達</p>
+        </div>
+        <div class="economy-item">
+          <div class="item-icon">🐟</div>
+          <h4>おさかなセンター</h4>
+          <p>日立の海産物直送</p>
+        </div>
+        <div class="economy-item">
+          <div class="item-icon">🎁</div>
+          <h4>地元特産品</h4>
+          <p>茨城ブランド商品</p>
+        </div>
+        <div class="economy-item">
+          <div class="item-icon">🗡️</div>
+          <h4>3Dフィギュア</h4>
+          <p>ゲームキャラを造形</p>
+        </div>
+        <div class="economy-item">
+          <div class="item-icon">🏺</div>
+          <h4>カスタムグッズ</h4>
+          <p>武器・モンスター印刷</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VISION -->
+<section id="vision">
+  <div class="section-inner" style="text-align: center;">
+    <div class="reveal">
+      <div class="section-label" style="text-align: center;">Final Vision</div>
+      <h2 class="section-title" style="text-align: center; margin-bottom: 3rem;">
+        日立市を<br><span class="accent">世界初</span>の<br>リアル連動メタバース都市へ
+      </h2>
+
+      <div class="vision-pillars">
+        <div class="pillar">
+          <div class="pillar-num">01</div>
+          <p>地方都市の<br>活性化</p>
+        </div>
+        <div class="pillar">
+          <div class="pillar-num">02</div>
+          <p>新しい<br>メタバース経済</p>
+        </div>
+        <div class="pillar">
+          <div class="pillar-num">03</div>
+          <p>AI社会の<br>実験場</p>
+        </div>
+      </div>
+
+      <div class="final-statement">
+        <h2>— ONE LINE DEFINITION —</h2>
+        <p>
+          METACHIとは<br>
+          <strong>「ゲーム × AI × 商業 × 製造」</strong>で<br>
+          現実都市とメタバースをつなぐ<br><br>
+          <strong>世界初の都市OS プロジェクト</strong>
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">METACHI</div>
+  <p>METAVERSE × HITACHI — BUILDING THE FUTURE CITY</p>
+</footer>
+
+<script>
+// ─── BACKGROUND CANVAS ───
+const bgCanvas = document.getElementById('bg-canvas');
+const bgCtx = bgCanvas.getContext('2d');
+
+function resizeBg() {
+  bgCanvas.width = window.innerWidth;
+  bgCanvas.height = window.innerHeight;
+}
+resizeBg();
+window.addEventListener('resize', resizeBg);
+
+const particles = [];
+for (let i = 0; i < 120; i++) {
+  particles.push({
+    x: Math.random() * window.innerWidth,
+    y: Math.random() * window.innerHeight,
+    vx: (Math.random() - 0.5) * 0.3,
+    vy: (Math.random() - 0.5) * 0.3,
+    r: Math.random() * 1.5 + 0.5,
+    alpha: Math.random() * 0.5 + 0.1,
+    color: Math.random() > 0.5 ? '0, 245, 255' : '0, 102, 255',
+  });
+}
+
+// Grid lines
+function drawGrid(ctx, w, h, t) {
+  ctx.strokeStyle = 'rgba(0, 245, 255, 0.03)';
+  ctx.lineWidth = 1;
+  const spacing = 80;
+  const offsetX = (t * 0.02) % spacing;
+  const offsetY = (t * 0.015) % spacing;
+
+  for (let x = -spacing + offsetX; x < w + spacing; x += spacing) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, h);
+    ctx.stroke();
+  }
+  for (let y = -spacing + offsetY; y < h + spacing; y += spacing) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(w, y);
+    ctx.stroke();
+  }
+}
+
+let bgT = 0;
+function animateBg() {
+  bgT++;
+  const w = bgCanvas.width, h = bgCanvas.height;
+  bgCtx.clearRect(0, 0, w, h);
+
+  // gradient background
+  const grad = bgCtx.createRadialGradient(w * 0.3, h * 0.3, 0, w * 0.5, h * 0.5, w * 0.8);
+  grad.addColorStop(0, 'rgba(0, 20, 50, 0.4)');
+  grad.addColorStop(1, 'rgba(2, 8, 16, 0)');
+  bgCtx.fillStyle = grad;
+  bgCtx.fillRect(0, 0, w, h);
+
+  drawGrid(bgCtx, w, h, bgT);
+
+  // particles
+  particles.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    if (p.x < 0) p.x = w;
+    if (p.x > w) p.x = 0;
+    if (p.y < 0) p.y = h;
+    if (p.y > h) p.y = 0;
+
+    bgCtx.beginPath();
+    bgCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    bgCtx.fillStyle = `rgba(${p.color}, ${p.alpha})`;
+    bgCtx.fill();
+  });
+
+  // connections
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 120) {
+        bgCtx.beginPath();
+        bgCtx.moveTo(particles[i].x, particles[i].y);
+        bgCtx.lineTo(particles[j].x, particles[j].y);
+        bgCtx.strokeStyle = `rgba(0, 245, 255, ${0.08 * (1 - dist/120)})`;
+        bgCtx.lineWidth = 0.5;
+        bgCtx.stroke();
+      }
+    }
+  }
+
+  requestAnimationFrame(animateBg);
+}
+animateBg();
+
+// ─── CITY MAP CANVAS ───
+const cityCanvas = document.getElementById('city-canvas');
+const cityCtx = cityCanvas.getContext('2d');
+
+function resizeCity() {
+  const rect = cityCanvas.parentElement.getBoundingClientRect();
+  cityCanvas.width = rect.width || 400;
+  cityCanvas.height = rect.height || 400;
+}
+resizeCity();
+window.addEventListener('resize', resizeCity);
+
+const buildings = [];
+function initBuildings() {
+  buildings.length = 0;
+  const w = cityCanvas.width, h = cityCanvas.height;
+  const rows = 8, cols = 8;
+  const cw = w / cols, ch = h / rows;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (Math.random() > 0.3) {
+        buildings.push({
+          x: c * cw + cw * 0.15,
+          y: r * ch + ch * 0.15,
+          w: cw * 0.7 * (0.6 + Math.random() * 0.4),
+          h: ch * 0.7 * (0.6 + Math.random() * 0.4),
+          brightness: Math.random(),
+          pulse: Math.random() * Math.PI * 2,
+          speed: 0.01 + Math.random() * 0.02,
+        });
+      }
+    }
+  }
+}
+initBuildings();
+
+let cityT = 0;
+function animateCity() {
+  cityT += 0.02;
+  const w = cityCanvas.width, h = cityCanvas.height;
+  cityCtx.clearRect(0, 0, w, h);
+
+  // dark background
+  cityCtx.fillStyle = '#04091a';
+  cityCtx.fillRect(0, 0, w, h);
+
+  // grid streets
+  cityCtx.strokeStyle = 'rgba(0, 245, 255, 0.08)';
+  cityCtx.lineWidth = 1;
+  const gw = w / 8, gh = h / 8;
+  for (let i = 0; i <= 8; i++) {
+    cityCtx.beginPath(); cityCtx.moveTo(i * gw, 0); cityCtx.lineTo(i * gw, h); cityCtx.stroke();
+    cityCtx.beginPath(); cityCtx.moveTo(0, i * gh); cityCtx.lineTo(w, i * gh); cityCtx.stroke();
+  }
+
+  // buildings
+  buildings.forEach(b => {
+    b.pulse += b.speed;
+    const glow = (Math.sin(b.pulse) + 1) / 2;
+    const alpha = 0.3 + glow * 0.5;
+
+    cityCtx.fillStyle = `rgba(0, 40, 80, 0.8)`;
+    cityCtx.fillRect(b.x, b.y, b.w, b.h);
+
+    cityCtx.strokeStyle = `rgba(0, 245, 255, ${alpha * 0.6})`;
+    cityCtx.lineWidth = 0.5;
+    cityCtx.strokeRect(b.x, b.y, b.w, b.h);
+
+    // windows
+    const wRows = Math.floor(b.h / 8);
+    const wCols = Math.floor(b.w / 8);
+    for (let r = 0; r < wRows; r++) {
+      for (let c = 0; c < wCols; c++) {
+        if (Math.random() > 0.4) {
+          const wa = (Math.sin(b.pulse + r * 0.5 + c * 0.3) + 1) / 2;
+          cityCtx.fillStyle = `rgba(0, 200, 255, ${wa * 0.6})`;
+          cityCtx.fillRect(b.x + c * 8 + 1, b.y + r * 8 + 1, 4, 4);
+        }
+      }
+    }
+  });
+
+  // scanning line
+  const scanY = (cityT * 30) % (h + 20) - 10;
+  const scanGrad = cityCtx.createLinearGradient(0, scanY - 5, 0, scanY + 5);
+  scanGrad.addColorStop(0, 'transparent');
+  scanGrad.addColorStop(0.5, 'rgba(0, 245, 255, 0.3)');
+  scanGrad.addColorStop(1, 'transparent');
+  cityCtx.fillStyle = scanGrad;
+  cityCtx.fillRect(0, scanY - 5, w, 10);
+
+  // label
+  cityCtx.fillStyle = 'rgba(0, 245, 255, 0.5)';
+  cityCtx.font = '10px Orbitron, monospace';
+  cityCtx.letterSpacing = '2px';
+  cityCtx.fillText('HITACHI CITY — IBARAKI', 10, h - 12);
+
+  requestAnimationFrame(animateCity);
+}
+animateCity();
+
+// ─── SCROLL REVEAL ───
+const reveals = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1 });
+reveals.forEach(el => observer.observe(el));
+</script>
+</body>
+</html>

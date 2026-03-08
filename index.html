@@ -388,6 +388,98 @@
     }
     .reveal.visible { opacity: 1; transform: translateY(0); }
 
+    /* ─── MISSION ─── */
+    #mission {
+      background: linear-gradient(180deg, transparent 0%, rgba(0,20,60,0.3) 50%, transparent 100%);
+    }
+    .mission-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6rem; align-items: start;
+    }
+    .mission-quote {
+      margin-top: 2.5rem;
+      padding: 1.8rem 2rem;
+      border-left: 3px solid rgba(0,245,255,0.4);
+      background: rgba(0,245,255,0.03);
+      border-radius: 0 4px 4px 0;
+      font-size: 1rem;
+      line-height: 2.2;
+      color: var(--text);
+      font-style: italic;
+    }
+    .mission-quote em { color: var(--cyan); font-style: normal; font-weight: 700; }
+    .city-facts {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1rem; margin-top: 2rem;
+    }
+    .city-fact {
+      padding: 1.2rem;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 6px;
+      background: var(--dark2);
+      text-align: center;
+      transition: border-color 0.3s;
+    }
+    .city-fact:hover { border-color: rgba(0,245,255,0.25); }
+    .city-fact .fact-icon { font-size: 1.5rem; margin-bottom: 0.5rem; display: block; }
+    .city-fact h4 { font-size: 0.82rem; color: var(--text); margin-bottom: 0.2rem; }
+    .city-fact p { font-size: 0.72rem; color: var(--text-dim); line-height: 1.5; }
+
+    /* ─── VISION 3-STEP ─── */
+    #vision {
+      background: linear-gradient(180deg, transparent 0%, rgba(139,0,255,0.05) 50%, transparent 100%);
+    }
+    .vision-ladder {
+      display: flex; flex-direction: column; gap: 0;
+      max-width: 800px; margin: 3rem auto 0;
+    }
+    .vision-step {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 2rem; align-items: start;
+      padding: 2.5rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      position: relative;
+    }
+    .vision-step:last-child { border-bottom: none; }
+    .vision-step-num {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 3rem; font-weight: 900;
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+    .vision-step-content h3 {
+      font-size: 1.3rem; font-weight: 900;
+      color: var(--text); margin-bottom: 0.5rem;
+    }
+    .vision-step-content h3 span {
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .vision-step-content p {
+      font-size: 0.88rem; color: var(--text-dim); line-height: 2;
+    }
+    .sagrada-note {
+      margin-top: 4rem; text-align: center;
+      padding: 2rem 2.5rem;
+      border: 1px solid rgba(0,245,255,0.15);
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(0,245,255,0.03), rgba(139,0,255,0.03));
+      max-width: 650px; margin: 4rem auto 0;
+      position: relative; overflow: hidden;
+    }
+    .sagrada-note::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(to right, transparent, var(--cyan), transparent);
+    }
+    .sagrada-note p { font-size: 0.9rem; color: var(--text-dim); line-height: 2.2; }
+    .sagrada-note strong { color: var(--cyan); }
+
     /* ─── RESPONSIVE ─── */
     @media (max-width: 768px) {
       nav { padding: 1rem 1.5rem; }
@@ -395,6 +487,10 @@
       .axis-layout { grid-template-columns: 1fr; gap: 3rem; }
       .axis-layout.reverse { direction: ltr; }
       .services-grid { grid-template-columns: 1fr; }
+      .mission-layout { grid-template-columns: 1fr; gap: 3rem; }
+      .city-facts { grid-template-columns: 1fr 1fr; }
+      .vision-step { grid-template-columns: 50px 1fr; gap: 1rem; }
+      .vision-step-num { font-size: 2rem; }
     }
   </style>
 </head>
@@ -424,20 +520,21 @@
 <nav>
   <div class="nav-logo">KOHEI MIYAMOTO</div>
   <ul class="nav-links">
+    <li><a href="#mission">MISSION</a></li>
     <li><a href="#services">SERVICES</a></li>
     <li><a href="#metaverse">METAVERSE</a></li>
     <li><a href="#dx">DX / AI</a></li>
-    <li><a href="#web">WEB</a></li>
+    <li><a href="#vision">VISION</a></li>
     <li><a href="#contact">CONTACT</a></li>
   </ul>
 </nav>
 
 <!-- HERO -->
 <section id="hero">
-  <div class="hero-subtitle">Technology Portfolio</div>
+  <div class="hero-subtitle">Metaverse × AI × Local Revitalization</div>
   <h1 class="hero-name">KOHEI<br>MIYAMOTO</h1>
   <p class="hero-tagline">
-    テクノロジーで、<span>事業の可能性</span>を解放する。
+    生まれ育った日立市から、<span>テクノロジーで世界を変えたい。</span>
   </p>
 
   <div class="hero-axes">
@@ -446,6 +543,7 @@
     <div class="hero-axis-chip"><span class="chip-num">03</span>中小企業AI導入</div>
     <div class="hero-axis-chip"><span class="chip-num">04</span>WEBページ作成</div>
     <div class="hero-axis-chip"><span class="chip-num">05</span>3Dプリント</div>
+    <div class="hero-axis-chip"><span class="chip-num">06</span>AIロボット</div>
   </div>
 
   <div class="scroll-indicator">
@@ -454,15 +552,75 @@
   </div>
 </section>
 
+<!-- MISSION -->
+<section id="mission">
+  <div class="section-inner">
+    <div class="mission-layout">
+      <div class="reveal">
+        <div class="section-label">WHY I DO THIS</div>
+        <h2 class="section-title">生まれ育った街を、<br><span class="accent">もう一度輝かせる</span></h2>
+        <div class="divider"></div>
+        <p style="color:var(--text-dim);font-size:0.9rem;line-height:2.2;">
+          茨城県日立市。日立製作所・JX金属を生んだ技術都市でありながら、今や「消滅可能性都市」の一つに選ばれた街。かつて賑わっていた商店街はシャッター街に変わり、日曜の昼でも人通りがない日がある。
+          <br><br>
+          それでも——海・山・川・プラネタリウム・動物園・遊園地が揃い、再起を目指す人々の熱が静かに高まっているのを感じる。この街には、まだ火種がある。
+          <br><br>
+          その火種に、テクノロジーで風を送りたい。それが宮本耕平の、人生のミッションです。
+        </p>
+
+        <div class="mission-quote">
+          「最悪コケても、<em>うちらの街を舞台にしたゲームがあったらしいよ</em>、ぐらいの感じで誰かの記憶に残るなら十分。ガウディのサグラダ・ファミリアみたいなものと思って、長い目で応援いただけると幸甚です。」
+        </div>
+      </div>
+
+      <div class="reveal">
+        <p style="font-family:'Orbitron',sans-serif;font-size:0.6rem;letter-spacing:4px;color:var(--cyan);opacity:0.6;margin-bottom:1.5rem;">HITACHI CITY — POTENTIAL</p>
+        <div class="city-facts">
+          <div class="city-fact">
+            <span class="fact-icon">🏭</span>
+            <h4>日立製作所</h4>
+            <p>創業の地。世界的技術企業の原点</p>
+          </div>
+          <div class="city-fact">
+            <span class="fact-icon">🌊</span>
+            <h4>海・山・川</h4>
+            <p>アクティビティの宝庫。自然資源豊富</p>
+          </div>
+          <div class="city-fact">
+            <span class="fact-icon">🔭</span>
+            <h4>プラネタリウム</h4>
+            <p>動物園・遊園地も揃う観光ポテンシャル</p>
+          </div>
+          <div class="city-fact">
+            <span class="fact-icon">🐼</span>
+            <h4>パンダ招致運動</h4>
+            <p>まちを盛り上げる熱い活動が続く</p>
+          </div>
+          <div class="city-fact">
+            <span class="fact-icon">👣</span>
+            <h4>ARRIVAL.SPACE</h4>
+            <p>いまプレのプレMETACHIとして日立を散歩できる</p>
+          </div>
+          <div class="city-fact">
+            <span class="fact-icon">📉</span>
+            <h4>消滅可能性都市</h4>
+            <p>だからこそ、テクノロジーで再起させる</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- SERVICES OVERVIEW -->
 <section id="services">
   <div class="section-inner">
     <div class="reveal">
       <div class="section-label">WHAT I DO</div>
-      <h2 class="section-title">5つの<span class="accent">事業軸</span></h2>
+      <h2 class="section-title">6つの<span class="accent">事業軸</span></h2>
       <div class="divider"></div>
       <p style="color:var(--text-dim);font-size:0.9rem;line-height:2;max-width:600px;">
-        メタバースからAI、Webまで。テクノロジーを軸に、あなたのビジネスを次のステージへ引き上げる5つのソリューションを提供します。
+        メタバースからAI・ロボット・Webまで。テクノロジーを軸に、あなたのビジネスを次のステージへ引き上げる6つのソリューションを提供します。
       </p>
     </div>
 
@@ -501,6 +659,13 @@
         <span class="service-en">3D PRINTING</span>
         <h3>3Dプリント</h3>
         <p>アイデアを24時間で形に。試作品からカスタムグッズ・小ロット製造まで。メタバースとリアルをつなぐ製造拠点。</p>
+      </div>
+      <div class="service-card">
+        <span class="service-num">AXIS 06</span>
+        <span class="service-icon">🦾</span>
+        <span class="service-en">AI ROBOT</span>
+        <h3>AIロボット</h3>
+        <p>AIの頭脳と物理の身体を融合。自律AIエージェントから産業用ロボット連携まで。次世代の自動化フロンティア。</p>
       </div>
     </div>
   </div>
@@ -805,6 +970,128 @@
           <span class="tag">ノベルティ</span>
         </div>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- AXIS 06: AI ROBOT -->
+<section id="ai-robot" class="axis-section">
+  <div class="section-inner">
+    <div class="axis-layout">
+      <div class="reveal">
+        <div class="section-label">AXIS 06 — AI ROBOT</div>
+        <h2 class="section-title">AIの頭脳と<br>物理の身体を<br><span class="accent">融合させる</span></h2>
+        <div class="divider"></div>
+        <p style="color:var(--text-dim);font-size:0.9rem;line-height:2;margin-bottom:2rem;">
+          AIは画面の中だけじゃない。自律AIエージェントが物理空間で動き、産業ロボットとAIを繋ぎ、METACHIのNPCがリアルの機械を操作する——その未来を今、設計しています。
+        </p>
+
+        <div class="feature-list">
+          <div class="feature-item">
+            <span class="feature-item-icon">🤖</span>
+            <div>
+              <h4>自律AIエージェント</h4>
+              <p>指示なしで動くAIが、タスクを分解・実行・完了まで自律的に処理。人間の代わりに働くデジタルワーカー。</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-item-icon">🦾</span>
+            <div>
+              <h4>産業ロボット × AI連携</h4>
+              <p>製造ライン・物流・検品にAIの判断力を搭載。カメラ・センサーデータをリアルタイム解析し、ロボットを制御。</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-item-icon">🌐</span>
+            <div>
+              <h4>メタバース↔現実ロボット連携</h4>
+              <p>METACHIのAI NPCが現実の機械を遠隔操作。仮想と物理が融合した次世代オペレーションシステム。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tag-list">
+          <span class="tag">AIエージェント</span>
+          <span class="tag">産業ロボット</span>
+          <span class="tag">コンピュータビジョン</span>
+          <span class="tag">自律制御</span>
+          <span class="tag">IoT連携</span>
+          <span class="tag">3Dプリント × ロボット</span>
+        </div>
+      </div>
+
+      <div class="reveal">
+        <div class="axis-visual">
+          <div class="axis-visual-label">AI ROBOT SPEC</div>
+          <div class="stat-row">
+            <div class="stat-item">
+              <span class="stat-label">コア技術</span>
+              <span class="stat-value">LLM + 物理制御</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">対応領域</span>
+              <span class="stat-value">製造 / 物流 / 接客</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">METACHI連携</span>
+              <span class="stat-value">仮想→現実 制御</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">3D Print連携</span>
+              <span class="stat-value">ロボット筐体 製造</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">ステータス</span>
+              <span class="stat-value">開発中</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VISION -->
+<section id="vision">
+  <div class="section-inner">
+    <div class="reveal" style="text-align:center;">
+      <div class="section-label" style="text-align:center;">GRAND VISION</div>
+      <h2 class="section-title" style="text-align:center;">
+        日立から始まる<br><span class="accent">日本再起動</span>
+      </h2>
+      <div class="divider" style="margin:1rem auto 0;"></div>
+    </div>
+
+    <div class="vision-ladder reveal">
+      <div class="vision-step">
+        <div class="vision-step-num">01</div>
+        <div class="vision-step-content">
+          <h3>日立市を<span>第二のシリコンバレーに</span></h3>
+          <p>消滅可能性都市から、テクノロジー発信都市へ。METACHIを核に、観光・商業・製造・AI研究が集積する都市モデルを構築。かつて日立製作所が産業を牽引したように、今度はメタバースとAIで世界に打って出る。</p>
+        </div>
+      </div>
+      <div class="vision-step">
+        <div class="vision-step-num">02</div>
+        <div class="vision-step-content">
+          <h3>茨城県の<span>魅力度を全国上位へ</span></h3>
+          <p>長年「魅力度ランキング最下位争い」の常連となっている茨城県。日立をモデルに、テクノロジーと地域の強みを掛け合わせた先進事例を県全体に展開。観光・移住・企業誘致で茨城の価値を根本から塗り替える。</p>
+        </div>
+      </div>
+      <div class="vision-step">
+        <div class="vision-step-num">03</div>
+        <div class="vision-step-content">
+          <h3>日本を<span>AI立国に</span></h3>
+          <p>地方課題を先進技術で解決するモデル都市として日立市を確立し、そのノウハウを日本全国へ。少子高齢化・過疎化・産業空洞化——これらすべてをテクノロジーで突破し、日本をもう一度、希望に満ちた場所に復活させる。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="sagrada-note reveal">
+      <p>
+        先の道は長く険しい。いつ完成するか当事者の自分にも見えていない。<br>
+        それでも、<strong>人生のミッションに掲げたからには完成まで持っていく</strong>。<br><br>
+        ガウディのサグラダ・ファミリアのように——完成するその時まで、楽しみにお待ちください。
+      </p>
     </div>
   </div>
 </section>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AXIS 01 — メタバース METACHI | MIYA</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<nav>
+  <a href="index.html" class="nav-logo">MIYA</a>
+  <ul class="nav-links">
+    <li><a href="index.html">HOME</a></li>
+    <li><a href="mission.html">MISSION</a></li>
+    <li class="nav-dropdown">
+      <a href="services.html">SERVICES</a>
+      <div class="dropdown-menu">
+        <a href="metaverse.html"><span class="dd-num">01</span> メタバース METACHI</a>
+        <a href="dx.html"><span class="dd-num">02</span> DX AIサービス業</a>
+        <a href="ai-biz.html"><span class="dd-num">03</span> 中小企業AI導入</a>
+        <a href="web.html"><span class="dd-num">04</span> WEBページ作成</a>
+        <a href="print.html"><span class="dd-num">05</span> 3Dプリント</a>
+        <a href="ai-robot.html"><span class="dd-num">06</span> AIロボット</a>
+      </div>
+    </li>
+    <li><a href="vision.html">VISION</a></li>
+    <li><a href="contact.html">CONTACT</a></li>
+  </ul>
+  <button class="hamburger" id="hamburger" aria-label="メニューを開く">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<div class="mobile-menu" id="mobile-menu">
+  <a href="index.html" class="mobile-link">HOME</a>
+  <a href="mission.html" class="mobile-link">MISSION</a>
+  <div class="mobile-services-toggle" id="mobile-services-toggle">SERVICES</div>
+  <div class="mobile-sub" id="mobile-sub">
+    <a href="services.html"><span class="sub-num">ALL</span> 6つの事業軸</a>
+    <a href="metaverse.html"><span class="sub-num">01</span> メタバース METACHI</a>
+    <a href="dx.html"><span class="sub-num">02</span> DX AIサービス業</a>
+    <a href="ai-biz.html"><span class="sub-num">03</span> 中小企業AI導入</a>
+    <a href="web.html"><span class="sub-num">04</span> WEBページ作成</a>
+    <a href="print.html"><span class="sub-num">05</span> 3Dプリント</a>
+    <a href="ai-robot.html"><span class="sub-num">06</span> AIロボット</a>
+  </div>
+  <a href="vision.html" class="mobile-link">VISION</a>
+  <a href="contact.html" class="mobile-link">CONTACT</a>
+</div>
+
+<section>
+  <div class="section-inner">
+    <a href="services.html" class="back-link">SERVICES</a>
+    <div class="axis-layout">
+      <div class="reveal">
+        <div class="section-label">AXIS 01 — METAVERSE</div>
+        <h2 class="section-title">現実都市と<br>メタバースを<br><span class="accent">つなぐ</span></h2>
+        <div class="divider"></div>
+        <p style="color:var(--text-dim);font-size:0.9rem;line-height:2;margin-bottom:2rem;">
+          茨城県日立市をフィールドに、リアル地形・神話・AI・商業・製造を統合した世界初の「都市OS」を構築中。ゲームが観光になり、商店街になる新経済圏。
+        </p>
+
+        <div class="feature-list">
+          <div class="feature-item">
+            <span class="feature-item-icon">🗾</span>
+            <div>
+              <h4>リアル地形オープンワールド</h4>
+              <p>日立市の実地形を完全再現したRPGフィールド。AI NPCが都市を自律運営する。</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-item-icon">🛒</span>
+            <div>
+              <h4>ゲーム内→現実配送の経済圏</h4>
+              <p>メタバース内で注文した商品が実際の店舗から自宅へ届く。仮想と現実の商業を直結。</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-item-icon">👁️</span>
+            <div>
+              <h4>謎の存在：カカセオ</h4>
+              <p>神々すら恐れる名もなき気配。その正体も目的も、誰も知らない。地震のたびに影が濃くなる——。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tag-list">
+          <span class="tag">VR / メタバース</span>
+          <span class="tag">AI NPC</span>
+          <span class="tag">リアル連動EC</span>
+          <span class="tag">地方創生</span>
+          <span class="tag">都市OS</span>
+        </div>
+      </div>
+
+      <div class="reveal">
+        <div class="axis-visual">
+          <div class="axis-visual-label">METACHI — CITY MAP</div>
+          <div class="city-map">
+            <canvas id="city-canvas"></canvas>
+          </div>
+          <div class="stat-row" style="margin-top:1.5rem;">
+            <div class="stat-item">
+              <span class="stat-label">舞台</span>
+              <span class="stat-value">茨城県 日立市</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">コア属性</span>
+              <span class="stat-value">水 / 雷 / 火 / 風</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">統合要素</span>
+              <span class="stat-value">ゲーム × AI × 商業 × 製造</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">MIYA</div>
+  <p>TECHNOLOGY × CREATIVITY — BUILDING THE FUTURE</p>
+</footer>
+
+<script src="bg.js"></script>
+</body>
+</html>

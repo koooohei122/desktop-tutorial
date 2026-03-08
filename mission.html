@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MISSION — MIYA</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<nav>
+  <a href="index.html" class="nav-logo">MIYA</a>
+  <ul class="nav-links">
+    <li><a href="index.html">HOME</a></li>
+    <li><a href="mission.html">MISSION</a></li>
+    <li class="nav-dropdown">
+      <a href="services.html">SERVICES</a>
+      <div class="dropdown-menu">
+        <a href="metaverse.html"><span class="dd-num">01</span> メタバース METACHI</a>
+        <a href="dx.html"><span class="dd-num">02</span> DX AIサービス業</a>
+        <a href="ai-biz.html"><span class="dd-num">03</span> 中小企業AI導入</a>
+        <a href="web.html"><span class="dd-num">04</span> WEBページ作成</a>
+        <a href="print.html"><span class="dd-num">05</span> 3Dプリント</a>
+        <a href="ai-robot.html"><span class="dd-num">06</span> AIロボット</a>
+      </div>
+    </li>
+    <li><a href="vision.html">VISION</a></li>
+    <li><a href="contact.html">CONTACT</a></li>
+  </ul>
+  <button class="hamburger" id="hamburger" aria-label="メニューを開く">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<div class="mobile-menu" id="mobile-menu">
+  <a href="index.html" class="mobile-link">HOME</a>
+  <a href="mission.html" class="mobile-link">MISSION</a>
+  <div class="mobile-services-toggle" id="mobile-services-toggle">SERVICES</div>
+  <div class="mobile-sub" id="mobile-sub">
+    <a href="services.html"><span class="sub-num">ALL</span> 6つの事業軸</a>
+    <a href="metaverse.html"><span class="sub-num">01</span> メタバース METACHI</a>
+    <a href="dx.html"><span class="sub-num">02</span> DX AIサービス業</a>
+    <a href="ai-biz.html"><span class="sub-num">03</span> 中小企業AI導入</a>
+    <a href="web.html"><span class="sub-num">04</span> WEBページ作成</a>
+    <a href="print.html"><span class="sub-num">05</span> 3Dプリント</a>
+    <a href="ai-robot.html"><span class="sub-num">06</span> AIロボット</a>
+  </div>
+  <a href="vision.html" class="mobile-link">VISION</a>
+  <a href="contact.html" class="mobile-link">CONTACT</a>
+</div>
+
+<section id="mission">
+  <div class="section-inner">
+    <div class="mission-layout">
+      <div class="reveal">
+        <div class="section-label">WHY I DO THIS</div>
+        <h2 class="section-title">生まれ育った街を、<br><span class="accent">もう一度輝かせる</span></h2>
+        <div class="divider"></div>
+        <p style="color:var(--text-dim);font-size:0.9rem;line-height:2.2;">
+          茨城県日立市。日立製作所・JX金属を生んだ技術都市でありながら、今や「消滅可能性都市」の一つに選ばれた街。かつて賑わっていた商店街はシャッター街に変わり、日曜の昼でも人通りがない日がある。
+          <br><br>
+          それでも——海・山・川・プラネタリウム・動物園・遊園地が揃い、再起を目指す人々の熱が静かに高まっているのを感じる。この街には、まだ火種がある。
+          <br><br>
+          その火種に、テクノロジーで風を送りたい。それがMIYAの、人生のミッションです。
+        </p>
+
+      </div>
+
+      <div class="reveal">
+        <h3 style="font-size:1rem;letter-spacing:2px;color:var(--cyan);margin-bottom:1.5rem;">日立市の強み・ポテンシャル</h3>
+        <p style="font-family:'Orbitron',sans-serif;font-size:0.6rem;letter-spacing:4px;color:var(--cyan);opacity:0.6;margin-bottom:1.5rem;">HITACHI CITY — POTENTIAL</p>
+        <div class="city-facts">
+          <div class="city-fact">
+            <span class="fact-icon">🏭</span>
+            <h4>日立製作所</h4>
+            <p>創業の地。世界的技術企業の原点</p>
+          </div>
+          <div class="city-fact">
+            <span class="fact-icon">🌊</span>
+            <h4>海・山・川</h4>
+            <p>アクティビティの宝庫。自然資源豊富</p>
+          </div>
+          <div class="city-fact">
+            <span class="fact-icon">🔭</span>
+            <h4>プラネタリウム</h4>
+            <p>動物園・遊園地も揃う観光ポテンシャル</p>
+          </div>
+          <div class="city-fact">
+            <span class="fact-icon">🐼</span>
+            <h4>パンダ招致運動</h4>
+            <p>まちを盛り上げる熱い活動が続く</p>
+          </div>
+          <div class="city-fact">
+            <span class="fact-icon">👣</span>
+            <h4>ARRIVAL.SPACE</h4>
+            <p>いまプレのプレMETACHIとして日立を散歩できる</p>
+          </div>
+          <div class="city-fact">
+            <span class="fact-icon">📉</span>
+            <h4>消滅可能性都市</h4>
+            <p>だからこそ、テクノロジーで再起させる</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">MIYA</div>
+  <p>TECHNOLOGY × CREATIVITY — BUILDING THE FUTURE</p>
+</footer>
+
+<script src="bg.js"></script>
+</body>
+</html>

@@ -9,8 +9,7 @@
       const key = 'metachi_auth';
       if (sessionStorage.getItem(key) !== '1') {
         document.addEventListener('DOMContentLoaded', function() {
-          const overlay = document.getElementById('auth-overlay');
-          overlay.style.display = 'flex';
+          document.getElementById('auth-overlay').style.display = 'flex';
         });
       }
       window._checkPass = function() {
@@ -27,7 +26,7 @@
       };
     })();
   </script>
-  <title>METACHI — Metaverse Hitachi</title>
+  <title>KOHEI MIYAMOTO — Technology Portfolio</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700;900&family=Orbitron:wght@400;700;900&display=swap');
 
@@ -40,14 +39,11 @@
       --dark3: #071224;
       --text: #c8d8f0;
       --text-dim: #5a7a9a;
-      --glow-cyan: 0 0 20px rgba(0, 245, 255, 0.5), 0 0 60px rgba(0, 245, 255, 0.2);
-      --glow-blue: 0 0 20px rgba(0, 102, 255, 0.5), 0 0 60px rgba(0, 102, 255, 0.2);
+      --glow-cyan: 0 0 20px rgba(0,245,255,0.5), 0 0 60px rgba(0,245,255,0.2);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     html { scroll-behavior: smooth; }
-
     body {
       background: var(--dark);
       color: var(--text);
@@ -55,597 +51,350 @@
       overflow-x: hidden;
     }
 
-    /* ─── CANVAS BACKGROUND ─── */
     #bg-canvas {
-      position: fixed;
-      top: 0; left: 0;
+      position: fixed; top: 0; left: 0;
       width: 100%; height: 100%;
-      z-index: 0;
-      pointer-events: none;
+      z-index: 0; pointer-events: none;
     }
 
     /* ─── NAV ─── */
     nav {
-      position: fixed;
-      top: 0; left: 0; right: 0;
+      position: fixed; top: 0; left: 0; right: 0;
       z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display: flex; align-items: center; justify-content: space-between;
       padding: 1.2rem 3rem;
-      background: rgba(2, 8, 16, 0.8);
+      background: rgba(2,8,16,0.85);
       backdrop-filter: blur(20px);
-      border-bottom: 1px solid rgba(0, 245, 255, 0.1);
+      border-bottom: 1px solid rgba(0,245,255,0.1);
     }
-
     .nav-logo {
       font-family: 'Orbitron', sans-serif;
-      font-size: 1.4rem;
-      font-weight: 900;
-      color: var(--cyan);
-      letter-spacing: 4px;
+      font-size: 1rem; font-weight: 900;
+      color: var(--cyan); letter-spacing: 4px;
       text-shadow: var(--glow-cyan);
     }
-
-    .nav-links {
-      display: flex;
-      gap: 2rem;
-      list-style: none;
-    }
-
+    .nav-links { display: flex; gap: 2rem; list-style: none; }
     .nav-links a {
-      color: var(--text-dim);
-      text-decoration: none;
-      font-size: 0.85rem;
-      letter-spacing: 1px;
+      color: var(--text-dim); text-decoration: none;
+      font-size: 0.8rem; letter-spacing: 2px;
       transition: color 0.3s;
     }
-
     .nav-links a:hover { color: var(--cyan); }
 
-    /* ─── SECTIONS ─── */
-    section {
-      position: relative;
-      z-index: 1;
+    /* ─── SECTION BASE ─── */
+    section { position: relative; z-index: 1; }
+    .section-inner { max-width: 1100px; margin: 0 auto; padding: 8rem 2rem; }
+    .section-label {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.65rem; letter-spacing: 6px;
+      color: var(--cyan); text-transform: uppercase;
+      margin-bottom: 1rem; opacity: 0.7;
+    }
+    .section-title {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 900; line-height: 1.1; margin-bottom: 1rem;
+    }
+    .section-title .accent {
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .divider {
+      width: 60px; height: 2px;
+      background: linear-gradient(to right, var(--cyan), transparent);
+      margin-bottom: 3rem;
     }
 
     /* ─── HERO ─── */
     #hero {
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 2rem;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 2rem;
     }
-
     .hero-subtitle {
       font-family: 'Orbitron', sans-serif;
-      font-size: 0.8rem;
-      letter-spacing: 8px;
-      color: var(--cyan);
-      text-transform: uppercase;
+      font-size: 0.75rem; letter-spacing: 8px;
+      color: var(--cyan); text-transform: uppercase;
       margin-bottom: 1.5rem;
-      opacity: 0;
-      animation: fadeUp 0.8s 0.2s forwards;
+      opacity: 0; animation: fadeUp 0.8s 0.2s forwards;
     }
-
-    .hero-title {
+    .hero-name {
       font-family: 'Orbitron', sans-serif;
-      font-size: clamp(4rem, 12vw, 10rem);
-      font-weight: 900;
-      line-height: 0.9;
-      letter-spacing: -2px;
-      background: linear-gradient(135deg, #fff 0%, var(--cyan) 40%, var(--blue) 70%, var(--purple) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      font-size: clamp(2.5rem, 8vw, 6rem);
+      font-weight: 900; line-height: 1;
+      letter-spacing: 4px;
+      background: linear-gradient(135deg, #fff 0%, var(--cyan) 40%, var(--blue) 80%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       background-clip: text;
-      opacity: 0;
-      animation: fadeUp 0.8s 0.4s forwards;
-      filter: drop-shadow(0 0 40px rgba(0, 245, 255, 0.3));
+      opacity: 0; animation: fadeUp 0.8s 0.4s forwards;
+      filter: drop-shadow(0 0 30px rgba(0,245,255,0.3));
     }
-
     .hero-tagline {
       margin-top: 2rem;
-      font-size: 1.1rem;
-      color: var(--text-dim);
-      font-weight: 300;
-      letter-spacing: 2px;
-      opacity: 0;
-      animation: fadeUp 0.8s 0.6s forwards;
+      font-size: 1rem; color: var(--text-dim);
+      font-weight: 300; letter-spacing: 2px;
+      opacity: 0; animation: fadeUp 0.8s 0.6s forwards;
     }
-
     .hero-tagline span { color: var(--cyan); font-weight: 700; }
 
-    .hero-definition {
-      margin-top: 3rem;
-      max-width: 600px;
-      padding: 1.5rem 2rem;
-      border: 1px solid rgba(0, 245, 255, 0.2);
-      background: rgba(0, 245, 255, 0.03);
-      border-radius: 2px;
-      font-size: 0.9rem;
-      line-height: 2;
-      color: var(--text-dim);
-      opacity: 0;
-      animation: fadeUp 0.8s 0.8s forwards;
+    /* 5軸クイックビュー */
+    .hero-axes {
+      margin-top: 3.5rem;
+      display: flex; gap: 1rem; flex-wrap: wrap;
+      justify-content: center;
+      opacity: 0; animation: fadeUp 0.8s 0.9s forwards;
     }
-
-    .hero-definition strong {
-      color: var(--cyan);
+    .hero-axis-chip {
+      padding: 0.5rem 1.2rem;
+      border: 1px solid rgba(0,245,255,0.25);
+      border-radius: 100px;
+      background: rgba(0,245,255,0.05);
+      font-size: 0.75rem; letter-spacing: 1px;
+      color: var(--text-dim);
+      transition: all 0.3s;
+    }
+    .hero-axis-chip:hover {
+      border-color: var(--cyan); color: var(--cyan);
+      background: rgba(0,245,255,0.1);
+    }
+    .hero-axis-chip .chip-num {
       font-family: 'Orbitron', sans-serif;
-      font-size: 0.75rem;
-      letter-spacing: 3px;
+      font-size: 0.6rem; color: var(--cyan);
+      margin-right: 0.4rem;
     }
 
     .scroll-indicator {
-      position: absolute;
-      bottom: 3rem;
-      left: 50%;
+      position: absolute; bottom: 3rem; left: 50%;
       transform: translateX(-50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.5rem;
-      opacity: 0;
-      animation: fadeIn 1s 1.5s forwards;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 0.5rem;
+      opacity: 0; animation: fadeIn 1s 1.5s forwards;
     }
-
-    .scroll-indicator span {
-      font-size: 0.65rem;
-      letter-spacing: 4px;
-      color: var(--text-dim);
-    }
-
+    .scroll-indicator span { font-size: 0.65rem; letter-spacing: 4px; color: var(--text-dim); }
     .scroll-line {
-      width: 1px;
-      height: 60px;
+      width: 1px; height: 60px;
       background: linear-gradient(to bottom, var(--cyan), transparent);
       animation: scrollPulse 2s infinite;
     }
 
-    /* ─── SECTION COMMON ─── */
-    .section-inner {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 8rem 2rem;
+    /* ─── SERVICES OVERVIEW ─── */
+    #services {
+      background: linear-gradient(180deg, transparent 0%, rgba(0,102,255,0.03) 50%, transparent 100%);
     }
-
-    .section-label {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 0.65rem;
-      letter-spacing: 6px;
-      color: var(--cyan);
-      text-transform: uppercase;
-      margin-bottom: 1rem;
-      opacity: 0.7;
-    }
-
-    .section-title {
-      font-size: clamp(2rem, 5vw, 3.5rem);
-      font-weight: 900;
-      line-height: 1.1;
-      margin-bottom: 1rem;
-    }
-
-    .section-title .accent {
-      background: linear-gradient(135deg, var(--cyan), var(--blue));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .divider {
-      width: 60px;
-      height: 2px;
-      background: linear-gradient(to right, var(--cyan), transparent);
-      margin-bottom: 3rem;
-    }
-
-    /* ─── WORLD / STORY ─── */
-    #world .section-inner {
+    .services-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6rem;
-      align-items: center;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem; margin-top: 3rem;
     }
-
-    .world-visual {
-      position: relative;
+    .service-card {
+      padding: 2rem 1.8rem;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 6px;
+      background: rgba(255,255,255,0.02);
+      transition: all 0.3s; cursor: default;
+      position: relative; overflow: hidden;
     }
-
-    .city-map {
-      width: 100%;
-      aspect-ratio: 1;
-      border: 1px solid rgba(0, 245, 255, 0.15);
-      border-radius: 4px;
-      background: var(--dark2);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .city-map canvas {
-      width: 100%;
-      height: 100%;
-    }
-
-    .story-flow {
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-    }
-
-    .story-node {
-      display: flex;
-      gap: 1.2rem;
-      align-items: flex-start;
-    }
-
-    .story-node-icon {
-      width: 40px;
-      height: 40px;
-      flex-shrink: 0;
-      border: 1px solid rgba(0, 245, 255, 0.3);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.1rem;
-      background: rgba(0, 245, 255, 0.05);
-    }
-
-    .story-node-text h4 {
-      font-size: 0.9rem;
-      color: var(--cyan);
-      margin-bottom: 0.3rem;
-      letter-spacing: 1px;
-    }
-
-    .story-node-text p {
-      font-size: 0.85rem;
-      color: var(--text-dim);
-      line-height: 1.7;
-    }
-
-    /* ─── SYSTEMS ─── */
-    #systems {
-      background: linear-gradient(180deg, transparent 0%, rgba(0, 102, 255, 0.03) 50%, transparent 100%);
-    }
-
-    .systems-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1.5rem;
-      margin-top: 3rem;
-    }
-
-    .system-card {
-      padding: 2rem 1.5rem;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 4px;
-      background: rgba(255, 255, 255, 0.02);
-      transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
-      cursor: default;
-    }
-
-    .system-card:hover {
-      border-color: rgba(0, 245, 255, 0.3);
-      transform: translateY(-4px);
-      box-shadow: 0 20px 60px rgba(0, 102, 255, 0.15);
-    }
-
-    .system-card-icon {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-    }
-
-    .system-card h3 {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 0.8rem;
-      letter-spacing: 3px;
-      color: var(--cyan);
-      margin-bottom: 0.8rem;
-    }
-
-    .system-card p {
-      font-size: 0.85rem;
-      color: var(--text-dim);
-      line-height: 1.8;
-    }
-
-    /* ─── ELEMENTS POWER ─── */
-    .elements-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1.5rem;
-      margin-top: 3rem;
-    }
-
-    .element-card {
-      padding: 2.5rem 1.5rem;
-      text-align: center;
-      border: 1px solid transparent;
-      border-radius: 4px;
-      background: var(--dark2);
-      transition: all 0.3s;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .element-card::before {
+    .service-card::before {
       content: '';
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      transition: opacity 0.3s;
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(to right, transparent, var(--card-color, var(--cyan)), transparent);
+      opacity: 0; transition: opacity 0.3s;
     }
-
-    .element-card.water { --el-color: #00c8ff; }
-    .element-card.thunder { --el-color: #ffe000; }
-    .element-card.fire { --el-color: #ff4400; }
-    .element-card.wind { --el-color: #00ff88; }
-
-    .element-card:hover {
-      border-color: var(--el-color);
-      box-shadow: 0 0 40px rgba(var(--el-color), 0.2), inset 0 0 60px rgba(0,0,0,0.5);
-      transform: translateY(-6px);
+    .service-card:hover::before { opacity: 1; }
+    .service-card:hover {
+      border-color: rgba(0,245,255,0.2);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 60px rgba(0,102,255,0.12);
+      background: rgba(0,245,255,0.03);
     }
-
-    .element-icon {
-      font-size: 3rem;
-      margin-bottom: 1rem;
-      display: block;
-      filter: drop-shadow(0 0 10px var(--el-color));
-    }
-
-    .element-card h3 {
+    .service-num {
       font-family: 'Orbitron', sans-serif;
-      font-size: 0.9rem;
-      letter-spacing: 3px;
-      color: var(--el-color);
-      margin-bottom: 0.5rem;
+      font-size: 0.6rem; letter-spacing: 3px;
+      color: var(--cyan); opacity: 0.5;
+      margin-bottom: 1rem; display: block;
+    }
+    .service-icon { font-size: 2.2rem; margin-bottom: 1rem; display: block; }
+    .service-card h3 {
+      font-size: 1.05rem; font-weight: 900;
+      color: var(--text); margin-bottom: 0.6rem; letter-spacing: 1px;
+    }
+    .service-card .service-en {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.6rem; letter-spacing: 3px;
+      color: var(--cyan); opacity: 0.6;
+      display: block; margin-bottom: 0.8rem;
+    }
+    .service-card p {
+      font-size: 0.82rem; color: var(--text-dim); line-height: 1.9;
     }
 
-    .element-card p {
-      font-size: 0.8rem;
-      color: var(--text-dim);
-      line-height: 1.7;
+    /* ─── AXIS DETAIL SECTIONS ─── */
+    .axis-section {
+      border-top: 1px solid rgba(255,255,255,0.04);
+    }
+    .axis-section:nth-child(even) {
+      background: linear-gradient(180deg, transparent 0%, rgba(0,102,255,0.02) 50%, transparent 100%);
     }
 
-    /* ─── ECONOMY ─── */
-    #economy .section-inner {
+    /* 2カラムレイアウト */
+    .axis-layout {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 5rem;
-      align-items: center;
+      gap: 6rem; align-items: start;
+    }
+    .axis-layout.reverse { direction: rtl; }
+    .axis-layout.reverse > * { direction: ltr; }
+
+    /* タグリスト */
+    .tag-list {
+      display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.5rem;
+    }
+    .tag {
+      padding: 0.35rem 0.9rem;
+      border: 1px solid rgba(0,245,255,0.2);
+      border-radius: 100px;
+      font-size: 0.75rem; color: var(--text-dim);
+      background: rgba(0,245,255,0.04);
     }
 
-    .economy-flow {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 0;
+    /* 特徴カード */
+    .feature-list {
+      display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem;
     }
-
-    .flow-step {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 1.2rem 1.5rem;
-      border: 1px solid rgba(0, 245, 255, 0.15);
+    .feature-item {
+      display: flex; gap: 1rem; align-items: flex-start;
+      padding: 1rem 1.2rem;
+      border: 1px solid rgba(255,255,255,0.05);
       border-radius: 4px;
-      background: rgba(0, 245, 255, 0.03);
-      width: 100%;
+      background: var(--dark2);
       transition: border-color 0.3s;
     }
+    .feature-item:hover { border-color: rgba(0,245,255,0.2); }
+    .feature-item-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 0.1rem; }
+    .feature-item h4 { font-size: 0.88rem; color: var(--text); margin-bottom: 0.2rem; }
+    .feature-item p { font-size: 0.8rem; color: var(--text-dim); line-height: 1.7; }
 
-    .flow-step:hover { border-color: rgba(0, 245, 255, 0.4); }
-
-    .flow-step-num {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 1.5rem;
-      font-weight: 900;
-      color: rgba(0, 245, 255, 0.3);
-      min-width: 2rem;
-    }
-
-    .flow-step-content h4 {
-      font-size: 0.9rem;
-      color: var(--text);
-      margin-bottom: 0.2rem;
-    }
-
-    .flow-step-content p {
-      font-size: 0.8rem;
-      color: var(--text-dim);
-    }
-
-    .flow-arrow {
-      width: 1px;
-      height: 20px;
-      background: linear-gradient(to bottom, rgba(0, 245, 255, 0.3), rgba(0, 245, 255, 0.1));
-      margin-left: 2.8rem;
-    }
-
-    .economy-items {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-    }
-
-    .economy-item {
-      padding: 1.2rem;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 4px;
+    /* ビジュアルボックス */
+    .axis-visual {
+      border: 1px solid rgba(0,245,255,0.12);
+      border-radius: 8px;
       background: var(--dark2);
-      text-align: center;
-      transition: all 0.3s;
+      padding: 2rem;
+      position: sticky; top: 8rem;
     }
-
-    .economy-item:hover {
-      border-color: rgba(0, 245, 255, 0.2);
-      background: rgba(0, 245, 255, 0.05);
-    }
-
-    .economy-item .item-icon { font-size: 1.8rem; margin-bottom: 0.5rem; }
-    .economy-item h4 { font-size: 0.8rem; color: var(--text); }
-    .economy-item p { font-size: 0.7rem; color: var(--text-dim); margin-top: 0.2rem; }
-
-    /* ─── VISION FINAL ─── */
-    #vision {
-      text-align: center;
-      background: linear-gradient(180deg, transparent 0%, rgba(139, 0, 255, 0.05) 50%, transparent 100%);
-    }
-
-    .vision-tagline {
-      font-size: clamp(1.5rem, 4vw, 2.8rem);
-      font-weight: 900;
-      line-height: 1.4;
-      max-width: 800px;
-      margin: 0 auto 3rem;
-    }
-
-    .vision-tagline .highlight {
+    .axis-visual-label {
       font-family: 'Orbitron', sans-serif;
-      background: linear-gradient(135deg, var(--cyan), var(--purple));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .vision-pillars {
-      display: flex;
-      justify-content: center;
-      gap: 3rem;
-      flex-wrap: wrap;
-      margin-bottom: 5rem;
-    }
-
-    .pillar {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .pillar-num {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 2.5rem;
-      font-weight: 900;
-      background: linear-gradient(135deg, var(--cyan), var(--blue));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .pillar p {
-      font-size: 0.8rem;
-      color: var(--text-dim);
-      letter-spacing: 1px;
-    }
-
-    .final-statement {
-      max-width: 700px;
-      margin: 0 auto;
-      padding: 3rem;
-      border: 1px solid rgba(0, 245, 255, 0.2);
-      border-radius: 4px;
-      background: linear-gradient(135deg, rgba(0, 245, 255, 0.03), rgba(139, 0, 255, 0.03));
-      position: relative;
-      overflow: hidden;
-    }
-
-    .final-statement::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 1px;
-      background: linear-gradient(to right, transparent, var(--cyan), transparent);
-    }
-
-    .final-statement h2 {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 0.75rem;
-      letter-spacing: 5px;
-      color: var(--cyan);
+      font-size: 0.6rem; letter-spacing: 4px;
+      color: var(--cyan); opacity: 0.5;
       margin-bottom: 1.5rem;
     }
-
-    .final-statement p {
-      font-size: 1.1rem;
-      line-height: 2;
-      color: var(--text);
+    .stat-row {
+      display: flex; flex-direction: column; gap: 1rem;
+    }
+    .stat-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.8rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .stat-item:last-child { border-bottom: none; }
+    .stat-label { font-size: 0.8rem; color: var(--text-dim); }
+    .stat-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.85rem; color: var(--cyan);
+      font-weight: 700;
     }
 
-    .final-statement strong {
+    /* メタチマップ */
+    .city-map {
+      width: 100%; aspect-ratio: 1;
+      border-radius: 4px;
+      background: var(--dark2);
+      overflow: hidden; position: relative;
+    }
+    .city-map canvas { width: 100%; height: 100%; }
+
+    /* ─── CONTACT ─── */
+    #contact {
+      text-align: center;
+      background: linear-gradient(180deg, transparent 0%, rgba(139,0,255,0.04) 50%, transparent 100%);
+    }
+    .contact-tagline {
+      font-size: clamp(1.4rem, 3.5vw, 2.5rem);
+      font-weight: 900; line-height: 1.5;
+      max-width: 700px; margin: 0 auto 3rem;
+    }
+    .contact-tagline .hl {
+      font-family: 'Orbitron', sans-serif;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .sns-links {
+      display: flex; gap: 1.5rem;
+      justify-content: center; flex-wrap: wrap;
+      margin-top: 2rem;
+    }
+    .sns-btn {
+      display: flex; align-items: center; gap: 0.7rem;
+      padding: 1rem 2rem;
+      border: 1px solid rgba(0,245,255,0.3);
+      border-radius: 4px;
+      background: rgba(0,245,255,0.05);
+      color: var(--text); text-decoration: none;
+      font-size: 0.85rem; letter-spacing: 1px;
+      transition: all 0.3s;
+    }
+    .sns-btn:hover {
+      background: rgba(0,245,255,0.15);
+      border-color: var(--cyan);
       color: var(--cyan);
+      box-shadow: 0 0 30px rgba(0,245,255,0.2);
+      transform: translateY(-2px);
     }
+    .sns-btn-icon { font-size: 1.2rem; }
 
     /* ─── FOOTER ─── */
     footer {
-      position: relative;
-      z-index: 1;
-      text-align: center;
-      padding: 3rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      position: relative; z-index: 1;
+      text-align: center; padding: 3rem;
+      border-top: 1px solid rgba(255,255,255,0.05);
     }
-
-    footer p {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 0.7rem;
-      letter-spacing: 4px;
-      color: var(--text-dim);
-    }
-
     footer .footer-logo {
-      font-size: 1.2rem;
-      color: var(--cyan);
-      margin-bottom: 1rem;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1rem; color: var(--cyan);
+      letter-spacing: 4px; margin-bottom: 0.8rem;
       text-shadow: var(--glow-cyan);
+    }
+    footer p {
+      font-size: 0.7rem; color: var(--text-dim); letter-spacing: 2px;
     }
 
     /* ─── ANIMATIONS ─── */
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
+      to   { opacity: 1; transform: translateY(0); }
     }
-
     @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
+      from { opacity: 0; } to { opacity: 1; }
     }
-
     @keyframes scrollPulse {
       0%, 100% { opacity: 0.3; transform: scaleY(1); }
-      50% { opacity: 1; transform: scaleY(1.2); }
+      50%       { opacity: 1;   transform: scaleY(1.2); }
     }
-
-    /* ─── SCROLL REVEAL ─── */
     .reveal {
-      opacity: 0;
-      transform: translateY(40px);
+      opacity: 0; transform: translateY(40px);
       transition: opacity 0.8s ease, transform 0.8s ease;
     }
-
-    .reveal.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
 
     /* ─── RESPONSIVE ─── */
     @media (max-width: 768px) {
       nav { padding: 1rem 1.5rem; }
       .nav-links { display: none; }
-      #world .section-inner { grid-template-columns: 1fr; gap: 3rem; }
-      .elements-grid { grid-template-columns: 1fr 1fr; }
-      #economy .section-inner { grid-template-columns: 1fr; gap: 3rem; }
-      .vision-pillars { gap: 2rem; }
-    }
-
-    @media (max-width: 480px) {
-      .elements-grid { grid-template-columns: 1fr 1fr; }
-      .economy-items { grid-template-columns: 1fr; }
+      .axis-layout { grid-template-columns: 1fr; gap: 3rem; }
+      .axis-layout.reverse { direction: ltr; }
+      .services-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -653,7 +402,7 @@
 
 <!-- AUTH OVERLAY -->
 <div id="auth-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#020810;align-items:center;justify-content:center;flex-direction:column;gap:2rem;">
-  <div style="font-family:'Orbitron',sans-serif;font-size:2rem;font-weight:900;color:#00f5ff;letter-spacing:6px;text-shadow:0 0 30px rgba(0,245,255,0.5);">METACHI</div>
+  <div style="font-family:'Orbitron',sans-serif;font-size:2rem;font-weight:900;color:#00f5ff;letter-spacing:6px;text-shadow:0 0 30px rgba(0,245,255,0.5);">KM</div>
   <div style="font-family:'Orbitron',sans-serif;font-size:0.65rem;letter-spacing:5px;color:rgba(0,245,255,0.5);">ENTER PASSWORD</div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:1rem;width:280px;">
     <input id="auth-input" type="password" onkeydown="if(event.key==='Enter')_checkPass()"
@@ -673,260 +422,414 @@
 
 <!-- NAV -->
 <nav>
-  <div class="nav-logo">METACHI</div>
+  <div class="nav-logo">KOHEI MIYAMOTO</div>
   <ul class="nav-links">
-    <li><a href="#world">01 STORY</a></li>
-    <li><a href="#systems">02 TECH</a></li>
-    <li><a href="#economy">03 ECONOMY</a></li>
-    <li><a href="#vision">04 VISION</a></li>
+    <li><a href="#services">SERVICES</a></li>
+    <li><a href="#metaverse">METAVERSE</a></li>
+    <li><a href="#dx">DX / AI</a></li>
+    <li><a href="#web">WEB</a></li>
+    <li><a href="#contact">CONTACT</a></li>
   </ul>
 </nav>
 
 <!-- HERO -->
 <section id="hero">
-  <div class="hero-subtitle">Metaverse × Hitachi</div>
-  <h1 class="hero-title">METACHI</h1>
+  <div class="hero-subtitle">Technology Portfolio</div>
+  <h1 class="hero-name">KOHEI<br>MIYAMOTO</h1>
   <p class="hero-tagline">
-    <span>ゲーム × AI × 商業 × 製造</span><br>
-    現実都市とメタバースをつなぐプロジェクト
+    テクノロジーで、<span>事業の可能性</span>を解放する。
   </p>
-  <div class="hero-definition">
-    <strong>DEFINITION</strong><br><br>
-    現実の都市（日立市）をベースに<br>
-    ゲーム・AI・商業・製造を統合した<br>
-    <strong>リアル連動メタバース都市</strong>
+
+  <div class="hero-axes">
+    <div class="hero-axis-chip"><span class="chip-num">01</span>メタバース METACHI</div>
+    <div class="hero-axis-chip"><span class="chip-num">02</span>DX AIサービス業</div>
+    <div class="hero-axis-chip"><span class="chip-num">03</span>中小企業AI導入</div>
+    <div class="hero-axis-chip"><span class="chip-num">04</span>WEBページ作成</div>
+    <div class="hero-axis-chip"><span class="chip-num">05</span>3Dプリント</div>
   </div>
+
   <div class="scroll-indicator">
     <span>SCROLL</span>
     <div class="scroll-line"></div>
   </div>
 </section>
 
-<!-- WORLD & STORY -->
-<section id="world">
-  <div class="section-inner">
-    <div class="world-text reveal">
-      <div class="section-label">AXIS 01 — STORY</div>
-      <h2 class="section-title">
-        神話と未来が<br>交差する<br><span class="accent">世界</span>
-      </h2>
-      <div class="divider"></div>
-
-      <div class="story-flow">
-        <div class="story-node">
-          <div class="story-node-icon">🌏</div>
-          <div class="story-node-text">
-            <h4>舞台：茨城県日立市</h4>
-            <p>リアル地形を完全再現したオープンワールドRPG。神・モンスター・歴史人物・AI NPCが共存する世界。</p>
-          </div>
-        </div>
-        <div class="story-node">
-          <div class="story-node-icon">⚡</div>
-          <div class="story-node-text">
-            <h4>発端：50年ごとの大地震</h4>
-            <p>未来では規模が増大し続ける謎の巨大地震。その原因を探るため主人公はVRシステム「METACHI」へ潜入する。</p>
-          </div>
-        </div>
-        <div class="story-node">
-          <div class="story-node-icon">⛩️</div>
-          <div class="story-node-text">
-            <h4>転移：過去の日本へ</h4>
-            <p>事故で過去の日本に飛ばされた主人公は神々と出会い、世界の異変を調べることになる。</p>
-          </div>
-        </div>
-        <div class="story-node">
-          <div class="story-node-icon">👁️</div>
-          <div class="story-node-text">
-            <h4>謎の存在：カカセオ</h4>
-            <p>神々すら恐れる名もなき気配。その正体も目的も、誰も知らない。ただ——地震のたびに、その影が濃くなる。</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="world-visual reveal">
-      <div class="city-map">
-        <canvas id="city-canvas"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <div class="section-inner" style="padding-top: 0;">
-    <div class="reveal" style="width:100%;">
-      <div class="section-label">ゲームシステム</div>
-      <h3 style="font-size:1.3rem;font-weight:900;margin-bottom:0.5rem;">神の力を宿す <span class="accent">4属性</span></h3>
-      <div class="divider"></div>
-      <p style="color: var(--text-dim); font-size: 0.9rem; line-height: 2; max-width: 600px; margin-bottom: 2rem;">
-        プレイヤーは4つの神の力のいずれかを継承する。選んだ属性により、戦闘スタイル・特殊能力・受注クエストが大きく変化する。
-      </p>
-      <div class="elements-grid">
-        <div class="element-card water">
-          <span class="element-icon">💧</span>
-          <h3>水</h3>
-          <p>癒しと流動の力。敵の動きを封じ、仲間を回復する水神の加護。</p>
-        </div>
-        <div class="element-card thunder">
-          <span class="element-icon">⚡</span>
-          <h3>雷</h3>
-          <p>速さと破壊の力。圧倒的なスピードで敵を撃ち抜く雷神の力。</p>
-        </div>
-        <div class="element-card fire">
-          <span class="element-icon">🔥</span>
-          <h3>火</h3>
-          <p>熱狂と革命の力。広範囲に猛威を振るう炎の神の怒り。</p>
-        </div>
-        <div class="element-card wind">
-          <span class="element-icon">🌀</span>
-          <h3>風</h3>
-          <p>自由と俊敏の力。地形を超え空間を支配する風の神の息吹。</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- SYSTEMS -->
-<section id="systems">
+<!-- SERVICES OVERVIEW -->
+<section id="services">
   <div class="section-inner">
     <div class="reveal">
-      <div class="section-label">AXIS 02 — TECHNOLOGY</div>
-      <h2 class="section-title">世界を動かす<br><span class="accent">AIと技術基盤</span></h2>
+      <div class="section-label">WHAT I DO</div>
+      <h2 class="section-title">5つの<span class="accent">事業軸</span></h2>
       <div class="divider"></div>
-      <p style="color: var(--text-dim); font-size: 0.9rem; line-height: 2; max-width: 600px;">
-        METACHIを支える4つのテクノロジー。AIが都市を自律運営し、現実とメタバースを物理的につなぐ。
+      <p style="color:var(--text-dim);font-size:0.9rem;line-height:2;max-width:600px;">
+        メタバースからAI、Webまで。テクノロジーを軸に、あなたのビジネスを次のステージへ引き上げる5つのソリューションを提供します。
       </p>
     </div>
 
-    <div class="systems-grid reveal" style="margin-top: 3rem;">
-      <div class="system-card">
-        <div class="system-card-icon">🤖</div>
-        <h3>AI NPC</h3>
-        <p>固定会話ではなくAI人格を持つNPC。会話・案内・商売・クエスト生成まで自律的に行動する。</p>
+    <div class="services-grid reveal">
+      <div class="service-card">
+        <span class="service-num">AXIS 01</span>
+        <span class="service-icon">🌐</span>
+        <span class="service-en">METAVERSE</span>
+        <h3>メタバース METACHI</h3>
+        <p>日立市をベースにした次世代リアル連動メタバース都市。ゲーム・AI・商業・製造が融合する世界初の都市OSプロジェクト。</p>
       </div>
-      <div class="system-card">
-        <div class="system-card-icon">🗺️</div>
-        <h3>AUTO WORLD</h3>
-        <p>画像からAIが自動で3D世界を生成。現実の写真から仮想空間を構築する未来の都市生成システム。</p>
+      <div class="service-card">
+        <span class="service-num">AXIS 02</span>
+        <span class="service-icon">🤖</span>
+        <span class="service-en">DX AI SERVICE</span>
+        <h3>DX AIサービス業</h3>
+        <p>小売・飲食・娯楽施設のAI化で集客・接客・在庫管理を自動化。現場の課題をテクノロジーで根本解決します。</p>
       </div>
-      <div class="system-card">
-        <div class="system-card-icon">📦</div>
-        <h3>3D PRINT</h3>
-        <p>ゲーム内で制作したアイテムを現実世界で製造・配送。メタバースと物理世界を直結する製造システム。</p>
+      <div class="service-card">
+        <span class="service-num">AXIS 03</span>
+        <span class="service-icon">⚙️</span>
+        <span class="service-en">SME AI INTEGRATION</span>
+        <h3>中小企業AI導入</h3>
+        <p>業務自動化・効率化・企業システム改善。RPAからLLM活用まで、現場に合わせたAI導入を設計・実装します。</p>
       </div>
-      <div class="system-card">
-        <div class="system-card-icon">🏙️</div>
-        <h3>CITY OS</h3>
-        <p>観光・商業・ゲーム・コミュニティ・教育を統合した都市オペレーティングシステム。</p>
+      <div class="service-card">
+        <span class="service-num">AXIS 04</span>
+        <span class="service-icon">💻</span>
+        <span class="service-en">WEB CREATION</span>
+        <h3>WEBページ作成</h3>
+        <p>このサイト自体が実績。デザインから公開・運用まで完結。ビジネスの顔となる高品質なWebを構築します。</p>
+      </div>
+      <div class="service-card">
+        <span class="service-num">AXIS 05</span>
+        <span class="service-icon">🖨️</span>
+        <span class="service-en">3D PRINTING</span>
+        <h3>3Dプリント</h3>
+        <p>アイデアを24時間で形に。試作品からカスタムグッズ・小ロット製造まで。メタバースとリアルをつなぐ製造拠点。</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ECONOMY -->
-<section id="economy">
+<!-- AXIS 01: METAVERSE -->
+<section id="metaverse" class="axis-section">
   <div class="section-inner">
-    <div class="reveal">
-      <div class="section-label">AXIS 03 — ECONOMY</div>
-      <h2 class="section-title">ゲームが<br><span class="accent">商店街</span>に<br>なる経済</h2>
-      <div class="divider"></div>
-
-      <div class="economy-flow">
-        <div class="flow-step">
-          <span class="flow-step-num">01</span>
-          <div class="flow-step-content">
-            <h4>ゲーム内で商品を選ぶ</h4>
-            <p>仮想の商店街でラーメン・カレー・地元特産品を注文</p>
-          </div>
-        </div>
-        <div class="flow-arrow"></div>
-        <div class="flow-step">
-          <span class="flow-step-num">02</span>
-          <div class="flow-step-content">
-            <h4>リアルタイムで決済</h4>
-            <p>ゲーム内通貨と現実の決済システムが連動</p>
-          </div>
-        </div>
-        <div class="flow-arrow"></div>
-        <div class="flow-step">
-          <span class="flow-step-num">03</span>
-          <div class="flow-step-content">
-            <h4>現実世界に商品が届く</h4>
-            <p>日立市の実店舗から自宅へ直送</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="reveal">
-      <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1.5rem; letter-spacing: 1px;">LINKED STORES</p>
-      <div class="economy-items">
-        <div class="economy-item">
-          <div class="item-icon">🍜</div>
-          <h4>ラーメン屋</h4>
-          <p>日立の名店と直結</p>
-        </div>
-        <div class="economy-item">
-          <div class="item-icon">🍛</div>
-          <h4>カレー屋</h4>
-          <p>ゲーム内注文で配達</p>
-        </div>
-        <div class="economy-item">
-          <div class="item-icon">🐟</div>
-          <h4>おさかなセンター</h4>
-          <p>日立の海産物直送</p>
-        </div>
-        <div class="economy-item">
-          <div class="item-icon">🎁</div>
-          <h4>地元特産品</h4>
-          <p>茨城ブランド商品</p>
-        </div>
-        <div class="economy-item">
-          <div class="item-icon">🗡️</div>
-          <h4>3Dフィギュア</h4>
-          <p>ゲームキャラを造形</p>
-        </div>
-        <div class="economy-item">
-          <div class="item-icon">🏺</div>
-          <h4>カスタムグッズ</h4>
-          <p>武器・モンスター印刷</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- VISION -->
-<section id="vision">
-  <div class="section-inner" style="text-align: center;">
-    <div class="reveal">
-      <div class="section-label" style="text-align: center;">AXIS 04 — VISION</div>
-      <h2 class="section-title" style="text-align: center; margin-bottom: 3rem;">
-        日立市を<br><span class="accent">世界初</span>の<br>リアル連動メタバース都市へ
-      </h2>
-
-      <div class="vision-pillars">
-        <div class="pillar">
-          <div class="pillar-num">01</div>
-          <p>地方都市の<br>活性化</p>
-        </div>
-        <div class="pillar">
-          <div class="pillar-num">02</div>
-          <p>新しい<br>メタバース経済</p>
-        </div>
-        <div class="pillar">
-          <div class="pillar-num">03</div>
-          <p>AI社会の<br>実験場</p>
-        </div>
-      </div>
-
-      <div class="final-statement">
-        <h2>— ONE LINE DEFINITION —</h2>
-        <p>
-          METACHIとは<br>
-          <strong>「ゲーム × AI × 商業 × 製造」</strong>で<br>
-          現実都市とメタバースをつなぐ<br><br>
-          <strong>世界初の都市OS プロジェクト</strong>
+    <div class="axis-layout">
+      <div class="reveal">
+        <div class="section-label">AXIS 01 — METAVERSE</div>
+        <h2 class="section-title">現実都市と<br>メタバースを<br><span class="accent">つなぐ</span></h2>
+        <div class="divider"></div>
+        <p style="color:var(--text-dim);font-size:0.9rem;line-height:2;margin-bottom:2rem;">
+          茨城県日立市をフィールドに、リアル地形・神話・AI・商業・製造を統合した世界初の「都市OS」を構築中。ゲームが観光になり、商店街になる新経済圏。
         </p>
+
+        <div class="feature-list">
+          <div class="feature-item">
+            <span class="feature-item-icon">🗾</span>
+            <div>
+              <h4>リアル地形オープンワールド</h4>
+              <p>日立市の実地形を完全再現したRPGフィールド。AI NPCが都市を自律運営する。</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-item-icon">🛒</span>
+            <div>
+              <h4>ゲーム内→現実配送の経済圏</h4>
+              <p>メタバース内で注文した商品が実際の店舗から自宅へ届く。仮想と現実の商業を直結。</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-item-icon">👁️</span>
+            <div>
+              <h4>謎の存在：カカセオ</h4>
+              <p>神々すら恐れる名もなき気配。その正体も目的も、誰も知らない。地震のたびに影が濃くなる——。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tag-list">
+          <span class="tag">VR / メタバース</span>
+          <span class="tag">AI NPC</span>
+          <span class="tag">リアル連動EC</span>
+          <span class="tag">地方創生</span>
+          <span class="tag">都市OS</span>
+        </div>
+      </div>
+
+      <div class="reveal">
+        <div class="axis-visual">
+          <div class="axis-visual-label">METACHI — CITY MAP</div>
+          <div class="city-map">
+            <canvas id="city-canvas"></canvas>
+          </div>
+          <div class="stat-row" style="margin-top:1.5rem;">
+            <div class="stat-item">
+              <span class="stat-label">舞台</span>
+              <span class="stat-value">茨城県 日立市</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">コア属性</span>
+              <span class="stat-value">水 / 雷 / 火 / 風</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">統合要素</span>
+              <span class="stat-value">ゲーム × AI × 商業 × 製造</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AXIS 02+03: DX AI -->
+<section id="dx" class="axis-section">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-label">AXIS 02 + 03 — DX / AI</div>
+      <h2 class="section-title">AIで<span class="accent">業務を変える</span></h2>
+      <div class="divider"></div>
+      <p style="color:var(--text-dim);font-size:0.9rem;line-height:2;max-width:640px;margin-bottom:3rem;">
+        「AIを使いたいが何から始めればいいか分からない」——その答えを持っています。業種・規模に関わらず、現場に合わせたAI実装で生産性を飛躍させます。
+      </p>
+    </div>
+
+    <div class="axis-layout reveal">
+      <div>
+        <p style="font-family:'Orbitron',sans-serif;font-size:0.65rem;letter-spacing:4px;color:var(--cyan);opacity:0.7;margin-bottom:1.5rem;">02 — DX AIサービス業</p>
+        <div class="feature-list">
+          <div class="feature-item">
+            <span class="feature-item-icon">🏪</span>
+            <div>
+              <h4>小売 / 飲食店のAI化</h4>
+              <p>AIレコメンド・自動予約・在庫最適化・顧客データ分析。スタッフコストを削減しながら顧客満足を向上。</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-item-icon">🎡</span>
+            <div>
+              <h4>娯楽施設のDX</h4>
+              <p>チケット管理・混雑予測・AI案内員。体験を損なわずオペレーションを効率化。</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-item-icon">📊</span>
+            <div>
+              <h4>データドリブン経営支援</h4>
+              <p>売上・客数・SNSデータを統合分析。意思決定のスピードを劇的に上げる。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p style="font-family:'Orbitron',sans-serif;font-size:0.65rem;letter-spacing:4px;color:var(--cyan);opacity:0.7;margin-bottom:1.5rem;">03 — 中小企業AI導入</p>
+        <div class="feature-list">
+          <div class="feature-item">
+            <span class="feature-item-icon">🔄</span>
+            <div>
+              <h4>業務自動化 (RPA / LLM)</h4>
+              <p>請求書処理・メール対応・レポート生成を自動化。月数十時間の工数削減を実現。</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-item-icon">💬</span>
+            <div>
+              <h4>社内AI アシスタント構築</h4>
+              <p>社内ドキュメントを学習したQ&Aボット。ナレッジ共有と新人教育コストを大幅削減。</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-item-icon">🏗️</span>
+            <div>
+              <h4>企業システム改善</h4>
+              <p>既存システムにAIレイヤーを追加。大規模な刷新なしに現場の生産性を上げる。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tag-list reveal" style="margin-top:2.5rem;">
+      <span class="tag">ChatGPT / Claude API</span>
+      <span class="tag">RPA</span>
+      <span class="tag">業務自動化</span>
+      <span class="tag">LLM実装</span>
+      <span class="tag">データ分析</span>
+      <span class="tag">POSシステム連携</span>
+      <span class="tag">チャットボット</span>
+    </div>
+  </div>
+</section>
+
+<!-- AXIS 04: WEB -->
+<section id="web" class="axis-section">
+  <div class="section-inner">
+    <div class="axis-layout">
+      <div class="reveal">
+        <div class="section-label">AXIS 04 — WEB CREATION</div>
+        <h2 class="section-title">ビジネスの<br>顔となる<br><span class="accent">Web</span>を作る</h2>
+        <div class="divider"></div>
+        <p style="color:var(--text-dim);font-size:0.9rem;line-height:2;margin-bottom:2rem;">
+          「このサイト自体が実績」——デザインから実装・公開・運用まで一貫して担当。会社HP・LP・ポートフォリオ・サービスサイトまで対応。
+        </p>
+
+        <div class="feature-list">
+          <div class="feature-item">
+            <span class="feature-item-icon">🎨</span>
+            <div>
+              <h4>デザイン × 実装 完全対応</h4>
+              <p>要件定義からUI設計・コーディング・公開まで一人で完結。外注コストゼロ。</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-item-icon">⚡</span>
+            <div>
+              <h4>圧倒的なスピード納品</h4>
+              <p>シンプルなLPなら最短数日。アニメーション・インタラクションも実装可能。</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-item-icon">📱</span>
+            <div>
+              <h4>スマホ完全対応</h4>
+              <p>レスポンシブデザインは標準装備。あらゆるデバイスで最高の体験を提供。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tag-list">
+          <span class="tag">HTML / CSS / JS</span>
+          <span class="tag">LP制作</span>
+          <span class="tag">会社HP</span>
+          <span class="tag">ポートフォリオ</span>
+          <span class="tag">GitHub Pages</span>
+          <span class="tag">アニメーション実装</span>
+        </div>
+      </div>
+
+      <div class="reveal">
+        <div class="axis-visual">
+          <div class="axis-visual-label">WEB SPEC</div>
+          <div class="stat-row">
+            <div class="stat-item">
+              <span class="stat-label">納期（LP）</span>
+              <span class="stat-value">数日〜</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">対応範囲</span>
+              <span class="stat-value">設計 → 公開</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">レスポンシブ</span>
+              <span class="stat-value">標準対応</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">このサイト</span>
+              <span class="stat-value">制作実績</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">アニメーション</span>
+              <span class="stat-value">Canvas / CSS</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AXIS 05: 3D PRINT -->
+<section id="print" class="axis-section">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-label">AXIS 05 — 3D PRINTING</div>
+      <h2 class="section-title">アイデアを<br><span class="accent">24時間</span>で<br>形にする</h2>
+      <div class="divider"></div>
+    </div>
+
+    <div class="axis-layout reveal">
+      <div>
+        <p style="color:var(--text-dim);font-size:0.9rem;line-height:2;margin-bottom:2rem;">
+          試作・製品開発・販促グッズ・カスタムパーツ。3Dプリンティングで「作りたいもの」を素早く現実に。METACHIとも連携し、メタバース内デザインを現物化するパイプラインも構築中。
+        </p>
+
+        <div class="feature-list">
+          <div class="feature-item">
+            <span class="feature-item-icon">🗡️</span>
+            <div>
+              <h4>ゲーム・アニメキャラ造形</h4>
+              <p>METACHIキャラクターや3Dモデルデータから高精度フィギュアを出力。コレクター向けにも対応。</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-item-icon">🏭</span>
+            <div>
+              <h4>試作品・カスタムパーツ</h4>
+              <p>製品開発の試作から精密部品まで。量産前の検証コストを大幅に削減する。</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-item-icon">🎁</span>
+            <div>
+              <h4>販促・ノベルティグッズ</h4>
+              <p>社名・ロゴ入りのオリジナルグッズを小ロットで製造。展示会・イベントの差別化に。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="axis-visual">
+          <div class="axis-visual-label">3D PRINT SPEC</div>
+          <div class="stat-row">
+            <div class="stat-item">
+              <span class="stat-label">最小ロット</span>
+              <span class="stat-value">1個〜</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">出力スピード</span>
+              <span class="stat-value">最短24時間</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">対応用途</span>
+              <span class="stat-value">試作 / グッズ / 部品</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">METACHI連携</span>
+              <span class="stat-value">ゲーム→現実 出力</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tag-list" style="margin-top:1.5rem;">
+          <span class="tag">FDM / 樹脂造形</span>
+          <span class="tag">フィギュア</span>
+          <span class="tag">試作品</span>
+          <span class="tag">小ロット製造</span>
+          <span class="tag">ノベルティ</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-label" style="text-align:center;">CONTACT</div>
+      <p class="contact-tagline">
+        あなたのビジネスに<br><span class="hl">テクノロジーを実装</span>しませんか？
+      </p>
+      <p style="color:var(--text-dim);font-size:0.9rem;line-height:2;max-width:500px;margin:0 auto;">
+        まずはお気軽にDMください。<br>どの軸でも、小さな相談から歓迎です。
+      </p>
+
+      <div class="sns-links">
+        <a class="sns-btn" href="https://x.com/metachi_project?s=21" target="_blank" rel="noopener">
+          <span class="sns-btn-icon">𝕏</span>
+          <span>@metachi_project</span>
+        </a>
+        <a class="sns-btn" href="https://www.instagram.com/metachi_project?igsh=MTBnMGc5eWlnNW9udg%3D%3D&utm_source=qr" target="_blank" rel="noopener">
+          <span class="sns-btn-icon">📸</span>
+          <span>@metachi_project</span>
+        </a>
       </div>
     </div>
   </div>
@@ -934,8 +837,8 @@
 
 <!-- FOOTER -->
 <footer>
-  <div class="footer-logo">METACHI</div>
-  <p>METAVERSE × HITACHI — BUILDING THE FUTURE CITY</p>
+  <div class="footer-logo">KOHEI MIYAMOTO</div>
+  <p>TECHNOLOGY × CREATIVITY — BUILDING THE FUTURE</p>
 </footer>
 
 <script>
@@ -951,37 +854,28 @@ resizeBg();
 window.addEventListener('resize', resizeBg);
 
 const particles = [];
-for (let i = 0; i < 120; i++) {
+for (let i = 0; i < 100; i++) {
   particles.push({
     x: Math.random() * window.innerWidth,
     y: Math.random() * window.innerHeight,
     vx: (Math.random() - 0.5) * 0.3,
     vy: (Math.random() - 0.5) * 0.3,
     r: Math.random() * 1.5 + 0.5,
-    alpha: Math.random() * 0.5 + 0.1,
+    alpha: Math.random() * 0.4 + 0.1,
     color: Math.random() > 0.5 ? '0, 245, 255' : '0, 102, 255',
   });
 }
 
-// Grid lines
 function drawGrid(ctx, w, h, t) {
-  ctx.strokeStyle = 'rgba(0, 245, 255, 0.03)';
+  ctx.strokeStyle = 'rgba(0, 245, 255, 0.025)';
   ctx.lineWidth = 1;
   const spacing = 80;
-  const offsetX = (t * 0.02) % spacing;
-  const offsetY = (t * 0.015) % spacing;
-
-  for (let x = -spacing + offsetX; x < w + spacing; x += spacing) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, h);
-    ctx.stroke();
+  const ox = (t * 0.02) % spacing, oy = (t * 0.015) % spacing;
+  for (let x = -spacing + ox; x < w + spacing; x += spacing) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
   }
-  for (let y = -spacing + offsetY; y < h + spacing; y += spacing) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(w, y);
-    ctx.stroke();
+  for (let y = -spacing + oy; y < h + spacing; y += spacing) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
   }
 }
 
@@ -990,48 +884,35 @@ function animateBg() {
   bgT++;
   const w = bgCanvas.width, h = bgCanvas.height;
   bgCtx.clearRect(0, 0, w, h);
-
-  // gradient background
-  const grad = bgCtx.createRadialGradient(w * 0.3, h * 0.3, 0, w * 0.5, h * 0.5, w * 0.8);
-  grad.addColorStop(0, 'rgba(0, 20, 50, 0.4)');
-  grad.addColorStop(1, 'rgba(2, 8, 16, 0)');
+  const grad = bgCtx.createRadialGradient(w*0.3, h*0.3, 0, w*0.5, h*0.5, w*0.8);
+  grad.addColorStop(0, 'rgba(0,20,50,0.4)');
+  grad.addColorStop(1, 'rgba(2,8,16,0)');
   bgCtx.fillStyle = grad;
   bgCtx.fillRect(0, 0, w, h);
-
   drawGrid(bgCtx, w, h, bgT);
-
-  // particles
   particles.forEach(p => {
-    p.x += p.vx;
-    p.y += p.vy;
-    if (p.x < 0) p.x = w;
-    if (p.x > w) p.x = 0;
-    if (p.y < 0) p.y = h;
-    if (p.y > h) p.y = 0;
-
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0) p.x = w; if (p.x > w) p.x = 0;
+    if (p.y < 0) p.y = h; if (p.y > h) p.y = 0;
     bgCtx.beginPath();
-    bgCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    bgCtx.fillStyle = `rgba(${p.color}, ${p.alpha})`;
+    bgCtx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    bgCtx.fillStyle = `rgba(${p.color},${p.alpha})`;
     bgCtx.fill();
   });
-
-  // connections
   for (let i = 0; i < particles.length; i++) {
-    for (let j = i + 1; j < particles.length; j++) {
+    for (let j = i+1; j < particles.length; j++) {
       const dx = particles[i].x - particles[j].x;
       const dy = particles[i].y - particles[j].y;
       const dist = Math.sqrt(dx*dx + dy*dy);
-      if (dist < 120) {
+      if (dist < 100) {
         bgCtx.beginPath();
         bgCtx.moveTo(particles[i].x, particles[i].y);
         bgCtx.lineTo(particles[j].x, particles[j].y);
-        bgCtx.strokeStyle = `rgba(0, 245, 255, ${0.08 * (1 - dist/120)})`;
-        bgCtx.lineWidth = 0.5;
-        bgCtx.stroke();
+        bgCtx.strokeStyle = `rgba(0,245,255,${0.06*(1-dist/100)})`;
+        bgCtx.lineWidth = 0.5; bgCtx.stroke();
       }
     }
   }
-
   requestAnimationFrame(animateBg);
 }
 animateBg();
@@ -1042,8 +923,8 @@ const cityCtx = cityCanvas.getContext('2d');
 
 function resizeCity() {
   const rect = cityCanvas.parentElement.getBoundingClientRect();
-  cityCanvas.width = rect.width || 400;
-  cityCanvas.height = rect.height || 400;
+  cityCanvas.width = rect.width || 360;
+  cityCanvas.height = rect.height || 360;
 }
 resizeCity();
 window.addEventListener('resize', resizeCity);
@@ -1053,18 +934,16 @@ function initBuildings() {
   buildings.length = 0;
   const w = cityCanvas.width, h = cityCanvas.height;
   const rows = 8, cols = 8;
-  const cw = w / cols, ch = h / rows;
+  const cw = w/cols, ch = h/rows;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (Math.random() > 0.3) {
         buildings.push({
-          x: c * cw + cw * 0.15,
-          y: r * ch + ch * 0.15,
-          w: cw * 0.7 * (0.6 + Math.random() * 0.4),
-          h: ch * 0.7 * (0.6 + Math.random() * 0.4),
-          brightness: Math.random(),
-          pulse: Math.random() * Math.PI * 2,
-          speed: 0.01 + Math.random() * 0.02,
+          x: c*cw+cw*0.15, y: r*ch+ch*0.15,
+          w: cw*0.7*(0.6+Math.random()*0.4),
+          h: ch*0.7*(0.6+Math.random()*0.4),
+          pulse: Math.random()*Math.PI*2,
+          speed: 0.01+Math.random()*0.02,
         });
       }
     }
@@ -1077,76 +956,50 @@ function animateCity() {
   cityT += 0.02;
   const w = cityCanvas.width, h = cityCanvas.height;
   cityCtx.clearRect(0, 0, w, h);
-
-  // dark background
   cityCtx.fillStyle = '#04091a';
   cityCtx.fillRect(0, 0, w, h);
-
-  // grid streets
-  cityCtx.strokeStyle = 'rgba(0, 245, 255, 0.08)';
+  cityCtx.strokeStyle = 'rgba(0,245,255,0.08)';
   cityCtx.lineWidth = 1;
-  const gw = w / 8, gh = h / 8;
+  const gw = w/8, gh = h/8;
   for (let i = 0; i <= 8; i++) {
-    cityCtx.beginPath(); cityCtx.moveTo(i * gw, 0); cityCtx.lineTo(i * gw, h); cityCtx.stroke();
-    cityCtx.beginPath(); cityCtx.moveTo(0, i * gh); cityCtx.lineTo(w, i * gh); cityCtx.stroke();
+    cityCtx.beginPath(); cityCtx.moveTo(i*gw,0); cityCtx.lineTo(i*gw,h); cityCtx.stroke();
+    cityCtx.beginPath(); cityCtx.moveTo(0,i*gh); cityCtx.lineTo(w,i*gh); cityCtx.stroke();
   }
-
-  // buildings
   buildings.forEach(b => {
     b.pulse += b.speed;
-    const glow = (Math.sin(b.pulse) + 1) / 2;
-    const alpha = 0.3 + glow * 0.5;
-
-    cityCtx.fillStyle = `rgba(0, 40, 80, 0.8)`;
+    const glow = (Math.sin(b.pulse)+1)/2;
+    cityCtx.fillStyle = 'rgba(0,40,80,0.8)';
     cityCtx.fillRect(b.x, b.y, b.w, b.h);
-
-    cityCtx.strokeStyle = `rgba(0, 245, 255, ${alpha * 0.6})`;
+    cityCtx.strokeStyle = `rgba(0,245,255,${(0.3+glow*0.5)*0.6})`;
     cityCtx.lineWidth = 0.5;
     cityCtx.strokeRect(b.x, b.y, b.w, b.h);
-
-    // windows
-    const wRows = Math.floor(b.h / 8);
-    const wCols = Math.floor(b.w / 8);
-    for (let r = 0; r < wRows; r++) {
-      for (let c = 0; c < wCols; c++) {
+    const wR = Math.floor(b.h/8), wC = Math.floor(b.w/8);
+    for (let r = 0; r < wR; r++) {
+      for (let c = 0; c < wC; c++) {
         if (Math.random() > 0.4) {
-          const wa = (Math.sin(b.pulse + r * 0.5 + c * 0.3) + 1) / 2;
-          cityCtx.fillStyle = `rgba(0, 200, 255, ${wa * 0.6})`;
-          cityCtx.fillRect(b.x + c * 8 + 1, b.y + r * 8 + 1, 4, 4);
+          const wa = (Math.sin(b.pulse+r*0.5+c*0.3)+1)/2;
+          cityCtx.fillStyle = `rgba(0,200,255,${wa*0.6})`;
+          cityCtx.fillRect(b.x+c*8+1, b.y+r*8+1, 4, 4);
         }
       }
     }
   });
-
-  // scanning line
-  const scanY = (cityT * 30) % (h + 20) - 10;
-  const scanGrad = cityCtx.createLinearGradient(0, scanY - 5, 0, scanY + 5);
-  scanGrad.addColorStop(0, 'transparent');
-  scanGrad.addColorStop(0.5, 'rgba(0, 245, 255, 0.3)');
-  scanGrad.addColorStop(1, 'transparent');
-  cityCtx.fillStyle = scanGrad;
-  cityCtx.fillRect(0, scanY - 5, w, 10);
-
-  // label
-  cityCtx.fillStyle = 'rgba(0, 245, 255, 0.5)';
-  cityCtx.font = '10px Orbitron, monospace';
-  cityCtx.letterSpacing = '2px';
-  cityCtx.fillText('HITACHI CITY — IBARAKI', 10, h - 12);
-
+  const scanY = (cityT*30)%(h+20)-10;
+  const sg = cityCtx.createLinearGradient(0,scanY-5,0,scanY+5);
+  sg.addColorStop(0,'transparent'); sg.addColorStop(0.5,'rgba(0,245,255,0.25)'); sg.addColorStop(1,'transparent');
+  cityCtx.fillStyle = sg; cityCtx.fillRect(0,scanY-5,w,10);
+  cityCtx.fillStyle = 'rgba(0,245,255,0.4)';
+  cityCtx.font = '9px Orbitron, monospace';
+  cityCtx.fillText('HITACHI CITY — METACHI', 10, h-10);
   requestAnimationFrame(animateCity);
 }
 animateCity();
 
 // ─── SCROLL REVEAL ───
-const reveals = document.querySelectorAll('.reveal');
 const observer = new IntersectionObserver((entries) => {
-  entries.forEach(e => {
-    if (e.isIntersecting) {
-      e.target.classList.add('visible');
-    }
-  });
-}, { threshold: 0.1 });
-reveals.forEach(el => observer.observe(el));
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.08 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 </script>
 </body>
 </html>

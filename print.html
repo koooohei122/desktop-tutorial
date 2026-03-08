@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AXIS 05 — 3Dプリント | MIYA</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<nav>
+  <a href="index.html" class="nav-logo">MIYA</a>
+  <ul class="nav-links">
+    <li><a href="index.html">HOME</a></li>
+    <li><a href="mission.html">MISSION</a></li>
+    <li class="nav-dropdown">
+      <a href="services.html">SERVICES</a>
+      <div class="dropdown-menu">
+        <a href="metaverse.html"><span class="dd-num">01</span> メタバース METACHI</a>
+        <a href="dx.html"><span class="dd-num">02</span> DX AIサービス業</a>
+        <a href="ai-biz.html"><span class="dd-num">03</span> 中小企業AI導入</a>
+        <a href="web.html"><span class="dd-num">04</span> WEBページ作成</a>
+        <a href="print.html"><span class="dd-num">05</span> 3Dプリント</a>
+        <a href="ai-robot.html"><span class="dd-num">06</span> AIロボット</a>
+      </div>
+    </li>
+    <li><a href="vision.html">VISION</a></li>
+    <li><a href="contact.html">CONTACT</a></li>
+  </ul>
+  <button class="hamburger" id="hamburger" aria-label="メニューを開く">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<div class="mobile-menu" id="mobile-menu">
+  <a href="index.html" class="mobile-link">HOME</a>
+  <a href="mission.html" class="mobile-link">MISSION</a>
+  <div class="mobile-services-toggle" id="mobile-services-toggle">SERVICES</div>
+  <div class="mobile-sub" id="mobile-sub">
+    <a href="services.html"><span class="sub-num">ALL</span> 6つの事業軸</a>
+    <a href="metaverse.html"><span class="sub-num">01</span> メタバース METACHI</a>
+    <a href="dx.html"><span class="sub-num">02</span> DX AIサービス業</a>
+    <a href="ai-biz.html"><span class="sub-num">03</span> 中小企業AI導入</a>
+    <a href="web.html"><span class="sub-num">04</span> WEBページ作成</a>
+    <a href="print.html"><span class="sub-num">05</span> 3Dプリント</a>
+    <a href="ai-robot.html"><span class="sub-num">06</span> AIロボット</a>
+  </div>
+  <a href="vision.html" class="mobile-link">VISION</a>
+  <a href="contact.html" class="mobile-link">CONTACT</a>
+</div>
+
+<section>
+  <div class="section-inner">
+    <a href="services.html" class="back-link">SERVICES</a>
+    <div class="reveal">
+      <div class="section-label">AXIS 05 — 3D PRINTING</div>
+      <h2 class="section-title">アイデアを<br><span class="accent">24時間</span>で<br>形にする</h2>
+      <div class="divider"></div>
+    </div>
+
+    <div class="axis-layout reveal">
+      <div>
+        <p style="color:var(--text-dim);font-size:0.9rem;line-height:2;margin-bottom:2rem;">
+          試作・製品開発・販促グッズ・カスタムパーツ。3Dプリンティングで「作りたいもの」を素早く現実に。METACHIとも連携し、メタバース内デザインを現物化するパイプラインも構築中。
+        </p>
+
+        <div class="feature-list">
+          <div class="feature-item">
+            <span class="feature-item-icon">🗡️</span>
+            <div>
+              <h4>ゲーム・アニメキャラ造形</h4>
+              <p>METACHIキャラクターや3Dモデルデータから高精度フィギュアを出力。コレクター向けにも対応。</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-item-icon">🏭</span>
+            <div>
+              <h4>試作品・カスタムパーツ</h4>
+              <p>製品開発の試作から精密部品まで。量産前の検証コストを大幅に削減する。</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-item-icon">🎁</span>
+            <div>
+              <h4>販促・ノベルティグッズ</h4>
+              <p>社名・ロゴ入りのオリジナルグッズを小ロットで製造。展示会・イベントの差別化に。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="axis-visual">
+          <div class="axis-visual-label">3D PRINT SPEC</div>
+          <div class="stat-row">
+            <div class="stat-item">
+              <span class="stat-label">最小ロット</span>
+              <span class="stat-value">1個〜</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">出力スピード</span>
+              <span class="stat-value">最短24時間</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">対応用途</span>
+              <span class="stat-value">試作 / グッズ / 部品</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">METACHI連携</span>
+              <span class="stat-value">ゲーム→現実 出力</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tag-list" style="margin-top:1.5rem;">
+          <span class="tag">FDM / 樹脂造形</span>
+          <span class="tag">フィギュア</span>
+          <span class="tag">試作品</span>
+          <span class="tag">小ロット製造</span>
+          <span class="tag">ノベルティ</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">MIYA</div>
+  <p>TECHNOLOGY × CREATIVITY — BUILDING THE FUTURE</p>
+</footer>
+
+<script src="bg.js"></script>
+</body>
+</html>

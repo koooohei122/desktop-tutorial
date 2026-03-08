@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AXIS 04 — WEBページ作成 | MIYA</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<nav>
+  <a href="index.html" class="nav-logo">MIYA</a>
+  <ul class="nav-links">
+    <li><a href="index.html">HOME</a></li>
+    <li><a href="mission.html">MISSION</a></li>
+    <li class="nav-dropdown">
+      <a href="services.html">SERVICES</a>
+      <div class="dropdown-menu">
+        <a href="metaverse.html"><span class="dd-num">01</span> メタバース METACHI</a>
+        <a href="dx.html"><span class="dd-num">02</span> DX AIサービス業</a>
+        <a href="ai-biz.html"><span class="dd-num">03</span> 中小企業AI導入</a>
+        <a href="web.html"><span class="dd-num">04</span> WEBページ作成</a>
+        <a href="print.html"><span class="dd-num">05</span> 3Dプリント</a>
+        <a href="ai-robot.html"><span class="dd-num">06</span> AIロボット</a>
+      </div>
+    </li>
+    <li><a href="vision.html">VISION</a></li>
+    <li><a href="contact.html">CONTACT</a></li>
+  </ul>
+  <button class="hamburger" id="hamburger" aria-label="メニューを開く">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<div class="mobile-menu" id="mobile-menu">
+  <a href="index.html" class="mobile-link">HOME</a>
+  <a href="mission.html" class="mobile-link">MISSION</a>
+  <div class="mobile-services-toggle" id="mobile-services-toggle">SERVICES</div>
+  <div class="mobile-sub" id="mobile-sub">
+    <a href="services.html"><span class="sub-num">ALL</span> 6つの事業軸</a>
+    <a href="metaverse.html"><span class="sub-num">01</span> メタバース METACHI</a>
+    <a href="dx.html"><span class="sub-num">02</span> DX AIサービス業</a>
+    <a href="ai-biz.html"><span class="sub-num">03</span> 中小企業AI導入</a>
+    <a href="web.html"><span class="sub-num">04</span> WEBページ作成</a>
+    <a href="print.html"><span class="sub-num">05</span> 3Dプリント</a>
+    <a href="ai-robot.html"><span class="sub-num">06</span> AIロボット</a>
+  </div>
+  <a href="vision.html" class="mobile-link">VISION</a>
+  <a href="contact.html" class="mobile-link">CONTACT</a>
+</div>
+
+<section>
+  <div class="section-inner">
+    <a href="services.html" class="back-link">SERVICES</a>
+    <div class="axis-layout">
+      <div class="reveal">
+        <div class="section-label">AXIS 04 — WEB CREATION</div>
+        <h2 class="section-title">ビジネスの<br>顔となる<br><span class="accent">Web</span>を作る</h2>
+        <div class="divider"></div>
+        <p style="color:var(--text-dim);font-size:0.9rem;line-height:2;margin-bottom:2rem;">
+          「このサイト自体が実績」——デザインから実装・公開・運用まで一貫して担当。会社HP・LP・ポートフォリオ・サービスサイトまで対応。
+        </p>
+
+        <div class="feature-list">
+          <div class="feature-item">
+            <span class="feature-item-icon">🎨</span>
+            <div>
+              <h4>デザイン × 実装 完全対応</h4>
+              <p>要件定義からUI設計・コーディング・公開まで一人で完結。外注コストゼロ。</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-item-icon">⚡</span>
+            <div>
+              <h4>圧倒的なスピード納品</h4>
+              <p>シンプルなLPなら最短数日。アニメーション・インタラクションも実装可能。</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <span class="feature-item-icon">📱</span>
+            <div>
+              <h4>スマホ完全対応</h4>
+              <p>レスポンシブデザインは標準装備。あらゆるデバイスで最高の体験を提供。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tag-list">
+          <span class="tag">HTML / CSS / JS</span>
+          <span class="tag">LP制作</span>
+          <span class="tag">会社HP</span>
+          <span class="tag">ポートフォリオ</span>
+          <span class="tag">GitHub Pages</span>
+          <span class="tag">アニメーション実装</span>
+        </div>
+      </div>
+
+      <div class="reveal">
+        <div class="axis-visual">
+          <div class="axis-visual-label">WEB SPEC</div>
+          <div class="stat-row">
+            <div class="stat-item">
+              <span class="stat-label">納期（LP）</span>
+              <span class="stat-value">数日〜</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">対応範囲</span>
+              <span class="stat-value">設計 → 公開</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">レスポンシブ</span>
+              <span class="stat-value">標準対応</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">このサイト</span>
+              <span class="stat-value">制作実績</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">アニメーション</span>
+              <span class="stat-value">Canvas / CSS</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">MIYA</div>
+  <p>TECHNOLOGY × CREATIVITY — BUILDING THE FUTURE</p>
+</footer>
+
+<script src="bg.js"></script>
+</body>
+</html>

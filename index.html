@@ -3,6 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    (function() {
+      const PASS = 'METACHI';
+      const key = 'metachi_auth';
+      if (sessionStorage.getItem(key) !== '1') {
+        document.addEventListener('DOMContentLoaded', function() {
+          const overlay = document.getElementById('auth-overlay');
+          overlay.style.display = 'flex';
+        });
+      }
+      window._checkPass = function() {
+        const input = document.getElementById('auth-input').value;
+        if (input === PASS) {
+          sessionStorage.setItem(key, '1');
+          document.getElementById('auth-overlay').style.display = 'none';
+        } else {
+          const err = document.getElementById('auth-error');
+          err.style.opacity = '1';
+          setTimeout(() => err.style.opacity = '0', 2000);
+          document.getElementById('auth-input').value = '';
+        }
+      };
+    })();
+  </script>
   <title>METACHI — Metaverse Hitachi</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700;900&family=Orbitron:wght@400;700;900&display=swap');
@@ -626,6 +650,24 @@
   </style>
 </head>
 <body>
+
+<!-- AUTH OVERLAY -->
+<div id="auth-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#020810;align-items:center;justify-content:center;flex-direction:column;gap:2rem;">
+  <div style="font-family:'Orbitron',sans-serif;font-size:2rem;font-weight:900;color:#00f5ff;letter-spacing:6px;text-shadow:0 0 30px rgba(0,245,255,0.5);">METACHI</div>
+  <div style="font-family:'Orbitron',sans-serif;font-size:0.65rem;letter-spacing:5px;color:rgba(0,245,255,0.5);">ENTER PASSWORD</div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:1rem;width:280px;">
+    <input id="auth-input" type="password" onkeydown="if(event.key==='Enter')_checkPass()"
+      style="width:100%;background:rgba(0,245,255,0.05);border:1px solid rgba(0,245,255,0.3);color:#fff;font-family:'Orbitron',sans-serif;font-size:1rem;letter-spacing:4px;padding:0.9rem 1.2rem;border-radius:2px;outline:none;text-align:center;"
+      placeholder="••••••••" />
+    <button onclick="_checkPass()"
+      style="width:100%;background:rgba(0,245,255,0.1);border:1px solid rgba(0,245,255,0.4);color:#00f5ff;font-family:'Orbitron',sans-serif;font-size:0.75rem;letter-spacing:4px;padding:0.9rem;border-radius:2px;cursor:pointer;transition:background 0.2s;"
+      onmouseover="this.style.background='rgba(0,245,255,0.2)'"
+      onmouseout="this.style.background='rgba(0,245,255,0.1)'">
+      ENTER
+    </button>
+    <div id="auth-error" style="opacity:0;transition:opacity 0.3s;font-size:0.75rem;color:#ff4444;letter-spacing:2px;">INCORRECT PASSWORD</div>
+  </div>
+</div>
 
 <canvas id="bg-canvas"></canvas>
 

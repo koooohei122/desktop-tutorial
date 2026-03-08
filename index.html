@@ -3,29 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script>
-    (function() {
-      const PASS = 'METACHI';
-      const key = 'metachi_auth';
-      if (sessionStorage.getItem(key) !== '1') {
-        document.addEventListener('DOMContentLoaded', function() {
-          document.getElementById('auth-overlay').style.display = 'flex';
-        });
-      }
-      window._checkPass = function() {
-        const input = document.getElementById('auth-input').value;
-        if (input === PASS) {
-          sessionStorage.setItem(key, '1');
-          document.getElementById('auth-overlay').style.display = 'none';
-        } else {
-          const err = document.getElementById('auth-error');
-          err.style.opacity = '1';
-          setTimeout(() => err.style.opacity = '0', 2000);
-          document.getElementById('auth-input').value = '';
-        }
-      };
-    })();
-  </script>
   <title>MIYA — Technology Portfolio</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700;900&family=Orbitron:wght@400;700;900&display=swap');

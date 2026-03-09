@@ -591,6 +591,61 @@ footer p {
 .mobile-sub a:hover { color: var(--cyan); }
 .mobile-sub .sub-num { font-size: 0.55rem; opacity: 0.6; color: var(--cyan); }
 
+/* ─── BOTTOM TAB BAR (mobile only) ─── */
+.bottom-tab-bar {
+  display: none;
+}
+@media (max-width: 768px) {
+  .bottom-tab-bar {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 200;
+    background: rgba(2,8,16,0.96);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(0,245,255,0.12);
+    height: 60px;
+    align-items: stretch;
+  }
+  .tab-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    text-decoration: none;
+    color: var(--text-dim);
+    font-size: 0.5rem;
+    letter-spacing: 1px;
+    font-family: 'Orbitron', sans-serif;
+    transition: color 0.2s, background 0.2s;
+    position: relative;
+  }
+  .tab-item:active { background: rgba(0,245,255,0.05); }
+  .tab-item.active {
+    color: var(--cyan);
+  }
+  .tab-item.active::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 20%; right: 20%;
+    height: 2px;
+    background: linear-gradient(to right, transparent, var(--cyan), transparent);
+    border-radius: 0 0 2px 2px;
+  }
+  .tab-icon {
+    font-size: 1.2rem;
+    line-height: 1;
+  }
+  .tab-label {
+    font-size: 0.48rem;
+    letter-spacing: 1.5px;
+  }
+  /* push page content above tab bar */
+  body { padding-bottom: 60px; }
+}
+
 /* ─── RESPONSIVE ─── */
 @media (max-width: 768px) {
   nav { padding: 1rem 1.5rem; }

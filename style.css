@@ -639,9 +639,9 @@ footer p {
 
   /* card */
   .fab-card {
-    position: absolute;
-    bottom: calc(100% + 0.9rem);
-    right: 0;
+    position: fixed;
+    bottom: calc(1.5rem + 54px + 0.9rem);
+    right: 1.5rem;
     width: 230px;
     background: rgba(4,13,26,0.97);
     backdrop-filter: blur(30px);

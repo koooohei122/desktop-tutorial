@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AXIS 07 — Recovery Lounge | MIYA</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .rl-hero {
+      text-align: center;
+      padding: 4rem 0 3rem;
+    }
+    .rl-hero .rl-en {
+      font-size: 0.7rem;
+      letter-spacing: 0.3em;
+      color: var(--text-dim);
+      margin-bottom: 0.5rem;
+    }
+    .rl-hero h1 {
+      font-size: clamp(2.4rem, 6vw, 4.5rem);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+    .rl-hero .rl-tagline {
+      font-size: 1rem;
+      color: var(--text-dim);
+      letter-spacing: 0.1em;
+      margin-bottom: 2.5rem;
+    }
+    .rl-concept-block {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 3rem 2.5rem;
+      margin-bottom: 2rem;
+    }
+    .rl-concept-block h3 {
+      font-size: 0.65rem;
+      letter-spacing: 0.3em;
+      color: var(--accent);
+      margin-bottom: 1.2rem;
+    }
+    .rl-concept-block p {
+      color: var(--text-dim);
+      font-size: 0.9rem;
+      line-height: 2.2;
+    }
+    .rl-concept-block p strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+    .rl-tagline-center {
+      font-size: clamp(1.4rem, 3.5vw, 2.2rem);
+      font-weight: 700;
+      color: var(--text);
+      text-align: center;
+      line-height: 1.9;
+      margin: 3rem 0;
+    }
+    .rl-keywords {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+      justify-content: center;
+      margin: 2rem 0;
+    }
+    .rl-keyword {
+      padding: 0.5rem 1.4rem;
+      border: 1px solid rgba(0,102,255,0.3);
+      border-radius: 999px;
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      background: rgba(0,102,255,0.05);
+    }
+    .rl-phase-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin: 2.5rem 0;
+    }
+    @media(max-width:680px) {
+      .rl-phase-grid { grid-template-columns: 1fr; }
+    }
+    .rl-phase-card {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+    .rl-phase-num {
+      font-size: 0.6rem;
+      letter-spacing: 0.3em;
+      color: var(--accent);
+      margin-bottom: 0.8rem;
+    }
+    .rl-phase-card h4 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 0.8rem;
+    }
+    .rl-phase-card p {
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      line-height: 1.9;
+    }
+    .rl-amenity-list {
+      list-style: none;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.6rem;
+      margin-top: 1rem;
+    }
+    @media(max-width:480px) {
+      .rl-amenity-list { grid-template-columns: 1fr; }
+    }
+    .rl-amenity-list li {
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      padding: 0.5rem 0.8rem;
+      background: rgba(255,255,255,0.02);
+      border-radius: 6px;
+      border-left: 2px solid rgba(0,102,255,0.25);
+    }
+    .rl-target-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-top: 1.2rem;
+    }
+    @media(max-width:560px) {
+      .rl-target-grid { grid-template-columns: 1fr; }
+    }
+    .rl-target-block {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      padding: 1.4rem;
+    }
+    .rl-target-block h5 {
+      font-size: 0.6rem;
+      letter-spacing: 0.25em;
+      color: var(--accent);
+      margin-bottom: 0.8rem;
+    }
+    .rl-target-block p {
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      line-height: 2;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<nav>
+  <a href="index.html" class="nav-logo">MIYA</a>
+  <ul class="nav-links">
+    <li><a href="index.html">HOME</a></li>
+    <li><a href="mission.html">MISSION</a></li>
+    <li class="nav-dropdown">
+      <a href="services.html">SERVICES</a>
+      <div class="dropdown-menu">
+        <a href="metaverse.html"><span class="dd-num">01</span> メタバース METACHI</a>
+        <a href="dx.html"><span class="dd-num">02</span> DX AIサービス業</a>
+        <a href="ai-biz.html"><span class="dd-num">03</span> 中小企業AI導入</a>
+        <a href="web.html"><span class="dd-num">04</span> WEBページ作成</a>
+        <a href="print.html"><span class="dd-num">05</span> 3Dプリント</a>
+        <a href="ai-robot.html"><span class="dd-num">06</span> AIロボット</a>
+        <a href="recovery-lounge.html"><span class="dd-num">07</span> 大人のリラクゼーション</a>
+      </div>
+    </li>
+    <li><a href="vision.html">VISION</a></li>
+    <li><a href="contact.html">CONTACT</a></li>
+  </ul>
+  <button class="hamburger" id="hamburger" aria-label="メニューを開く">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<div class="mobile-menu" id="mobile-menu">
+  <a href="index.html" class="mobile-link">HOME</a>
+  <a href="mission.html" class="mobile-link">MISSION</a>
+  <div class="mobile-services-toggle" id="mobile-services-toggle">SERVICES</div>
+  <div class="mobile-sub" id="mobile-sub">
+    <a href="services.html"><span class="sub-num">ALL</span> 7つの事業軸</a>
+    <a href="metaverse.html"><span class="sub-num">01</span> メタバース METACHI</a>
+    <a href="dx.html"><span class="sub-num">02</span> DX AIサービス業</a>
+    <a href="ai-biz.html"><span class="sub-num">03</span> 中小企業AI導入</a>
+    <a href="web.html"><span class="sub-num">04</span> WEBページ作成</a>
+    <a href="print.html"><span class="sub-num">05</span> 3Dプリント</a>
+    <a href="ai-robot.html"><span class="sub-num">06</span> AIロボット</a>
+    <a href="recovery-lounge.html"><span class="sub-num">07</span> 大人のリラクゼーション</a>
+  </div>
+  <a href="vision.html" class="mobile-link">VISION</a>
+  <a href="contact.html" class="mobile-link">CONTACT</a>
+</div>
+
+<section>
+  <div class="section-inner">
+    <a href="services.html" class="back-link">SERVICES</a>
+    <div class="reveal">
+      <div class="rl-hero">
+        <div class="rl-en">AXIS 07 — ADULT RELAXATION SPACE</div>
+        <h1>Recovery Lounge</h1>
+        <p class="rl-tagline">夜を回復する場所</p>
+      </div>
+
+      <p style="color:var(--text-dim);font-size:1rem;line-height:2.4;text-align:center;max-width:560px;margin:0 auto 3rem;">
+        Recovery Loungeは<br>
+        飲食店でもネカフェでもない。<br><br>
+        街の夜に存在する<strong style="color:var(--text);">回復のためのラウンジ</strong>。
+      </p>
+
+      <div class="rl-tagline-center">
+        飲んだあと。仕事のあと。終電前。<br>
+        <span class="accent">少し休んで、帰る。</span>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <div class="rl-concept-block">
+        <h3>BRAND CONCEPT — RECOVER YOUR NIGHT</h3>
+        <p>
+          都市には<strong>飲む場所・食べる場所・遊ぶ場所</strong>は多い。<br>
+          しかし<strong>回復する場所</strong>は少ない。<br><br>
+          Recovery Loungeは街の夜に<strong>回復という体験</strong>を提供する。<br>
+          静かにくつろげるホテルラウンジ。派手ではなく、落ち着いていて、安心できる。<br>
+          まだ家に帰りたくなくて、でも疲れている——そんな夜の居場所。
+        </p>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <div style="text-align:center;margin-bottom:1.5rem;">
+        <div class="section-label">BRAND KEYWORDS</div>
+      </div>
+      <div class="rl-keywords">
+        <span class="rl-keyword">Recovery</span>
+        <span class="rl-keyword">Calm</span>
+        <span class="rl-keyword">Slow</span>
+        <span class="rl-keyword">Private</span>
+        <span class="rl-keyword">Night</span>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <div style="margin-bottom:1.2rem;">
+        <div class="section-label">EXPERIENCE DESIGN</div>
+        <h3 style="font-size:1.2rem;color:var(--text);margin-top:0.5rem;">来店体験 — 3つのフェーズ</h3>
+      </div>
+      <div class="rl-phase-grid">
+        <div class="rl-phase-card">
+          <div class="rl-phase-num">PHASE 01</div>
+          <h4>Arrival</h4>
+          <p>落ち着いた照明<br>ヒーリング音楽<br>癒しのアロマ<br><br>ガウンに着替えて街の喧騒から離れる。</p>
+        </div>
+        <div class="rl-phase-card">
+          <div class="rl-phase-num">PHASE 02</div>
+          <h4>Relax</h4>
+          <p>ソファベッドにくつろぎながらあと一杯のカクテルを。軽い食事、香るハーブティー、映画、漫画、光と音と香りを脱力で楽しむ。</p>
+        </div>
+        <div class="rl-phase-card">
+          <div class="rl-phase-num">PHASE 03</div>
+          <h4>Recover</h4>
+          <p>横になり<br>呼吸が落ち着き<br><br>心が回復する。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <div class="rl-concept-block">
+        <h3>SPACE AMENITIES</h3>
+        <ul class="rl-amenity-list">
+          <li>🛋 ソファベッド・クッション</li>
+          <li>🌿 癒しの光・落ち着くアロマ</li>
+          <li>🎵 心を洗う音楽</li>
+          <li>🪢 ハンモック</li>
+          <li>🎮 ミニゲームラウンジ</li>
+          <li>📚 漫画・映画鑑賞</li>
+          <li>🍹 ドリンク（カクテル・ハーブティー）</li>
+          <li>🍽 軽食</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <div class="rl-concept-block">
+        <h3>TARGET AUDIENCE</h3>
+        <div class="rl-target-grid">
+          <div class="rl-target-block">
+            <h5>MAIN — 20〜40代</h5>
+            <p>
+              飲み会おわりの夜<br>
+              どこかまだ帰りたくない人<br>
+              疲れた人・癒されたい人<br>
+              カップル<br>
+              深夜客
+            </p>
+          </div>
+          <div class="rl-target-block">
+            <h5>SUB</h5>
+            <p>
+              1人でゆっくり漫画を読みたい人<br>
+              仕事帰りの休憩に立ち寄る人<br>
+              瞑想・マインドフルネスを求める人
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <div class="tag-list">
+        <span class="tag">大人のリラクゼーション</span>
+        <span class="tag">ナイトラウンジ</span>
+        <span class="tag">回復体験</span>
+        <span class="tag">都市の夜</span>
+        <span class="tag">癒し空間</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">MIYA</div>
+  <p>TECHNOLOGY × CREATIVITY — BUILDING THE FUTURE</p>
+</footer>
+
+<script src="bg.js"></script>
+</body>
+</html>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AXIS 03 — 中小企業AI導入 | MIYA</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 
@@ -129,28 +129,45 @@
   <p>TECHNOLOGY × CREATIVITY — BUILDING THE FUTURE</p>
 </footer>
 
-<nav class="bottom-tab-bar">
-  <a href="index.html" class="tab-item">
-    <span class="tab-icon">🏠</span>
-    <span class="tab-label">HOME</span>
-  </a>
-  <a href="mission.html" class="tab-item">
-    <span class="tab-icon">🎯</span>
-    <span class="tab-label">MISSION</span>
-  </a>
-  <a href="services.html" class="tab-item active">
-    <span class="tab-icon">⚡</span>
-    <span class="tab-label">SERVICES</span>
-  </a>
-  <a href="vision.html" class="tab-item">
-    <span class="tab-icon">🔭</span>
-    <span class="tab-label">VISION</span>
-  </a>
-  <a href="contact.html" class="tab-item">
-    <span class="tab-icon">✉️</span>
-    <span class="tab-label">CONTACT</span>
-  </a>
-</nav>
+<div class="fab-nav" id="fab-nav">
+  <div class="fab-overlay" id="fab-overlay"></div>
+  <div class="fab-card" id="fab-card">
+    <div class="fab-card-label">NAVIGATE</div>
+    <nav class="fab-nav-list">
+      <a href="index.html" class="fab-nav-item">
+        <span class="fab-nav-icon">🏠</span>
+        <span class="fab-nav-text">HOME</span>
+        <span class="fab-nav-arrow">→</span>
+      </a>
+      <a href="mission.html" class="fab-nav-item">
+        <span class="fab-nav-icon">🎯</span>
+        <span class="fab-nav-text">MISSION</span>
+        <span class="fab-nav-arrow">→</span>
+      </a>
+      <a href="services.html" class="fab-nav-item active">
+        <span class="fab-nav-icon">⚡</span>
+        <span class="fab-nav-text">SERVICES</span>
+        <span class="fab-nav-arrow">→</span>
+      </a>
+      <a href="vision.html" class="fab-nav-item">
+        <span class="fab-nav-icon">🔭</span>
+        <span class="fab-nav-text">VISION</span>
+        <span class="fab-nav-arrow">→</span>
+      </a>
+      <a href="contact.html" class="fab-nav-item">
+        <span class="fab-nav-icon">✉️</span>
+        <span class="fab-nav-text">CONTACT</span>
+        <span class="fab-nav-arrow">→</span>
+      </a>
+    </nav>
+  </div>
+  <button class="fab-btn" id="fab-btn" aria-label="ナビゲーション">
+    <span class="fab-dots">
+      <span></span><span></span>
+      <span></span><span></span>
+    </span>
+  </button>
+</div>
 <script src="bg.js"></script>
 </body>
 </html>

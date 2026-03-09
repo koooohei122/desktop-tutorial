@@ -161,10 +161,29 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 // ─── HAMBURGER MENU ───
 const hamburger = document.getElementById('hamburger');
 const mobileMenu = document.getElementById('mobile-menu');
-hamburger.addEventListener('click', () => {
-  hamburger.classList.toggle('open');
-  mobileMenu.classList.toggle('open');
-});
+if (hamburger) {
+  hamburger.addEventListener('click', () => {
+    hamburger.classList.toggle('open');
+    mobileMenu.classList.toggle('open');
+  });
+}
+
+// ─── FAB NAVIGATION ───
+const fabBtn = document.getElementById('fab-btn');
+const fabCard = document.getElementById('fab-card');
+const fabOverlay = document.getElementById('fab-overlay');
+if (fabBtn && fabCard && fabOverlay) {
+  fabBtn.addEventListener('click', () => {
+    const isOpen = fabBtn.classList.toggle('open');
+    fabCard.classList.toggle('open', isOpen);
+    fabOverlay.classList.toggle('open', isOpen);
+  });
+  fabOverlay.addEventListener('click', () => {
+    fabBtn.classList.remove('open');
+    fabCard.classList.remove('open');
+    fabOverlay.classList.remove('open');
+  });
+}
 
 // モバイル SERVICES アコーディオン
 const svcToggle = document.getElementById('mobile-services-toggle');
@@ -179,8 +198,8 @@ if (svcToggle && mobileSub) {
 // メニュー項目クリックで閉じる
 document.querySelectorAll('.mobile-link, .mobile-sub a').forEach(link => {
   link.addEventListener('click', () => {
-    hamburger.classList.remove('open');
-    mobileMenu.classList.remove('open');
+    if (hamburger) hamburger.classList.remove('open');
+    if (mobileMenu) mobileMenu.classList.remove('open');
     if (mobileSub) mobileSub.classList.remove('open');
     if (svcToggle) svcToggle.classList.remove('open');
   });

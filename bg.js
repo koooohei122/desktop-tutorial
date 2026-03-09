@@ -198,8 +198,8 @@ if (svcToggle && mobileSub) {
 // メニュー項目クリックで閉じる
 document.querySelectorAll('.mobile-link, .mobile-sub a').forEach(link => {
   link.addEventListener('click', () => {
-    hamburger.classList.remove('open');
-    mobileMenu.classList.remove('open');
+    if (hamburger) hamburger.classList.remove('open');
+    if (mobileMenu) mobileMenu.classList.remove('open');
     if (mobileSub) mobileSub.classList.remove('open');
     if (svcToggle) svcToggle.classList.remove('open');
   });

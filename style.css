@@ -640,7 +640,7 @@ footer p {
   /* card */
   .fab-card {
     position: fixed;
-    bottom: calc(1.5rem + 54px + 0.9rem + env(safe-area-inset-bottom, 0px));
+    bottom: calc(2.5rem + 54px + 0.9rem + env(safe-area-inset-bottom, 0px));
     right: 1.5rem;
     width: 230px;
     background: rgba(4,13,26,0.97);
